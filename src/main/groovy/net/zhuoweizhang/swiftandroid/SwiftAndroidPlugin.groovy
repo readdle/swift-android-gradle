@@ -34,18 +34,14 @@ public class SwiftAndroidPlugin implements Plugin<Project> {
 		return new File("which swift".execute().text).
 			parentFile.parentFile
 	}
+	public static String getScriptRoot() {
+		return System.getenv("HOME")+"/.gradle/scripts/"
+	}
 
 	public static Task createCopyStdlibTask(Project project, String name) {
-		return project.task(type: Copy, name) {
-			from({
-				new File(SwiftAndroidPlugin.swiftRoot, "lib/swift/android")
-			})
-			include("*.so")
-			from({
-				new File(SwiftAndroidPlugin.ndkRoot,
-					"/sources/cxx-stl/llvm-libc++/libs/armeabi-v7a/libc++_shared.so")
-			})
-			into("src/main/jniLibs/armeabi-v7a")
+		return project.task(type: Exec, name) {
+			commandLine(System.getenv("HOME")+"/.gradle/scripts/copy-libraries.sh",
+								"src/main/jniLibs/armeabi-v7a")
 		}
 	}
 	public static Task createCopyTask(Project project, String name) {
@@ -62,9 +58,8 @@ public class SwiftAndroidPlugin implements Plugin<Project> {
 	}
 	public static Task createCompileSwiftTask(Project project, String name) {
 		return project.task(type: Exec, name) {
-			commandLine("bash", "-c", "SWIFTC=\"" +
-				SwiftAndroidPlugin.swiftRoot.absolutePath +
-				"/bin/swiftc-pm-android\" swift build")
+			commandLine("bash", "-c", "SWIFT_EXEC=\""+
+				System.getenv("HOME")+"/.gradle/scripts/swiftc-android.sh\" swift build")
 			workingDir("src/main/swift")
 		}
 	}
