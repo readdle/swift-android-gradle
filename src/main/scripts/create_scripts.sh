@@ -32,7 +32,7 @@ mkdir -p "$DESTINATION" && cd "$DESTINATION" &&
 
 rsync -u "$ANDROID_SWIFT_HOME"/lib/swift/android/*.so . &&
 
-rpl -R -e libicu libscu lib*.so && rm -f *UnitTest* &&
+rpl -R -e libicu libscu lib*.so && rm -f *Unittest* &&
 
 rsync -u "$ANDROID_NDK_HOME"/sources/cxx-stl/llvm-libc++/libs/armeabi-v7a/libc++_shared.so . ||
 
