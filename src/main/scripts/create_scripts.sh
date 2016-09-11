@@ -19,6 +19,26 @@ DOC
 
 mkdir -p $SCRIPTS &&
 
+cat <<'SCRIPT' >$SCRIPTS/copy-libraries.sh &&
+#!/bin/bash
+
+DESTINATION="$1"
+
+ANDROID_ICU=${ANDROID_ICU:-~/libiconv-libicu-android}
+ANDROID_NDK_HOME=${ANDROID_NDK_HOME:-~/android-ndk-r12b}
+ANDROID_SWIFT_HOME=$(dirname $(dirname $(which swiftc)))
+
+mkdir -p "$DESTINATION" && cd "$DESTINATION" &&
+
+rsync -u "$ANDROID_SWIFT_HOME"/lib/swift/android/*.so . &&
+
+rpl -R -e libicu libscu lib*.so && rm -f *UnitTest* &&
+
+rsync -u "$ANDROID_NDK_HOME"/sources/cxx-stl/llvm-libc++/libs/armeabi-v7a/libc++_shared.so . ||
+
+(echo "*** Error executing: $0 $@" && exit 1)
+SCRIPT
+
 cat <<'SCRIPT' >$SCRIPTS/swiftc-android.sh &&
 #!/bin/bash
 
@@ -37,4 +57,4 @@ swiftc -target armv7-none-linux-androideabi \
 (echo "*** Error executing: $0 $@" && exit 1)
 SCRIPT
 
-chmod +x $SCRIPTS/swiftc-android.sh
+chmod +x $SCRIPTS/{copy-libraries,swiftc-android}.sh
