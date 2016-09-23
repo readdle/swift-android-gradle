@@ -24,7 +24,6 @@ cat <<'SCRIPT' >$SCRIPTS/copy-libraries.sh &&
 
 DESTINATION="$1"
 
-ANDROID_ICU=${ANDROID_ICU:-~/libiconv-libicu-android}
 ANDROID_NDK_HOME=${ANDROID_NDK_HOME:-~/android-ndk-r12b}
 ANDROID_SWIFT_HOME=$(dirname $(dirname $(which swiftc)))
 
