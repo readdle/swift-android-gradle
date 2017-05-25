@@ -2,9 +2,9 @@
 
 SCRIPTS=~/.gradle/scripts
 
-cat <<'DOC'
+cat <<'DOC' &&
 
-This version of the gradle plugin uses scripts which require the following environment variable to be set:
+This version of the gradle plugin uses scripts which accepts the following environment variable:
 
 ANDROID_NDK_HOME: path to an Android NDK downloadable from:
 http://developer.android.com/ndk/downloads/index.html
@@ -14,9 +14,9 @@ https://github.com/apple/swift/blob/master/docs/Android.md
 
 DOC
 
-mkdir -p $SCRIPTS &&
+mkdir -p $SCRIPTS && cd $SCRIPTS &&
 
-cat <<'SCRIPT' >$SCRIPTS/copy-libraries.sh &&
+cat <<'SCRIPT' >copy-libraries.sh &&
 #!/bin/bash
 
 DESTINATION="$1"
@@ -29,7 +29,7 @@ rsync -u "$ANDROID_NDK_HOME/sources/cxx-stl/llvm-libc++/libs/armeabi-v7a/libc++_
 rpl -R -e libicu libscu lib*.so && rm -f *Unittest*
 SCRIPT
 
-cat <<'SCRIPT' >$SCRIPTS/swiftc-android.sh &&
+cat <<'SCRIPT' >swiftc-android.sh &&
 #!/bin/bash
 
 ANDROID_NDK_HOME=${ANDROID_NDK_HOME:-/usr/android/ndk}
@@ -43,15 +43,24 @@ fi
 ARGS=$(echo "$*" | sed -e 's@-target x86_64-unknown-linux -sdk / @@') 
 
 if [[ "$*" =~ " -emit-executable " ]]; then
-   ARGS="-Xlinker -shared -Xlinker -export-dynamic -Xlinker -fuse-ld=androideabi $ARGS"
+    if [[ ! -f "/usr/bin/armv7-none-linux-androideabi-ld.gold" ]]; then
+	cat <<'EOF'
+
+Missing correct linker /usr/bin/armv7-none-linux-androideabi-ld.gold.
+This should be a link to the following binary included in the Android NDK
+$NDK/toolchains/arm-linux-androideabi-4.9/prebuilt/linux-x86_64/bin/arm-linux-androideabi-ld.gold
+
+EOF
+	exit 1
+    fi
+    LINKER_ARGS="-Xlinker -shared -Xlinker -export-dynamic"
 fi
 
 swiftc -target armv7-none-linux-androideabi \
     -sdk $ANDROID_NDK_HOME/platforms/android-21/arch-arm \
     -L $ANDROID_NDK_HOME/sources/cxx-stl/llvm-libc++/libs/armeabi-v7a \
     -L $ANDROID_NDK_HOME/toolchains/arm-linux-androideabi-4.9/prebuilt/linux-x86_64/lib/gcc/arm-linux-androideabi/4.9* \
-    $ARGS || (echo "*** Error executing: $0 $@" && exit 1)
-
+    $LINKER_ARGS $ARGS || (echo "*** Error executing: $0 $@" && exit 1)
 SCRIPT
 
-chmod +x $SCRIPTS/{copy-libraries,swiftc-android}.sh
+chmod +x {copy-libraries,swiftc-android}.sh
