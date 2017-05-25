@@ -44,11 +44,12 @@ ARGS=$(echo "$*" | sed -e 's@-target x86_64-unknown-linux -sdk / @@')
 
 if [[ "$*" =~ " -emit-executable " ]]; then
     if [[ ! -f "/usr/bin/armv7-none-linux-androideabi-ld.gold" ]]; then
-	cat <<'EOF'
+	cat <<EOF
+$0:
 
 Missing correct linker /usr/bin/armv7-none-linux-androideabi-ld.gold.
 This should be a link to the following binary included in the Android NDK
-$NDK/toolchains/arm-linux-androideabi-4.9/prebuilt/linux-x86_64/bin/arm-linux-androideabi-ld.gold
+\$NDK/toolchains/arm-linux-androideabi-4.9/prebuilt/linux-x86_64/bin/arm-linux-androideabi-ld.gold
 
 EOF
 	exit 1
