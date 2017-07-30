@@ -1,3 +1,6 @@
+
+#### This version of the Gradle plugin is obsolete. It is now a part of the  [Android Toolchain](http://johnholdsworth.com/android_toolchain.tgz)
+
 Gradle plugin for building Swift for Android using the Swift Package Manager.
 
 Very early proof of concept; only works for Debug targets, and is pretty awful. (Your help is appreciated!)
