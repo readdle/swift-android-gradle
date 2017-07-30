@@ -1,5 +1,5 @@
 
-#### This version of the Gradle plugin is obsolete. It is now a part of the  [Android Toolchain](http://johnholdsworth.com/android_toolchain.tgz)
+#### This version of the Gradle plugin is obsolete. It is now a part of the  [Android Toolchain](https://github.com/SwiftJava/android_toolchain)
 
 Gradle plugin for building Swift for Android using the Swift Package Manager.
 
