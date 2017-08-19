@@ -29,6 +29,9 @@ And add this to the module's build.gradle:
 
 apply plugin: 'net.zhuoweizhang.swiftandroid'
 
+This version of the plugin requires https://github.com/SwiftJava/java_swift
+with a tag > 2.1.0 *** Check for "pinning" files created by Swift PM. **
+
 Consult https://github.com/SwiftJava/swift-android-kotlin for an example.
 
 DOC
@@ -72,7 +75,7 @@ export JAVA_HOME="$JAVA_HOME"
 if [[ ! -f /tmp/genswift/genswift.class ]]; then
     mkdir -p /tmp/genswift &&
     cd "\$SWIFT_INSTALL/swift-android-gradle/src/main/scripts" &&
-    $JAVA_HOME/bin/javac -d /tmp/genswift genswift.java &&
+    "\$JAVA_HOME/bin/javac" -d /tmp/genswift genswift.java &&
     cd - >/dev/null
 fi &&
 
@@ -91,15 +94,15 @@ PERL
 
 # Compile bindings
 rm -rf /tmp/bindings && mkdir /tmp/bindings &&
-\$JAVA_HOME/bin/javac -parameters -d /tmp/bindings \`find . -type f | grep /swiftbindings/\` &&
+"\$JAVA_HOME/bin/javac" -parameters -d /tmp/bindings \`find . -type f | grep /swiftbindings/\` &&
 
 # Pack bindings into a jar
 cd - >/dev/null && cd /tmp/bindings &&
-\$JAVA_HOME/bin/jar cf bindings.jar \`find . -type f -name '*.class'\` && cd - >/dev/null &&
+"\$JAVA_HOME/bin/jar" cf bindings.jar \`find . -type f -name '*.class'\` && cd - >/dev/null &&
 
 # Code gen classes in jar to Swift using genswift.java
-\$JAVA_HOME/bin/jar tf /tmp/bindings/bindings.jar | grep /swiftbindings/ | sed 's@\\.class\$@@' | \
-\$JAVA_HOME/bin/java -cp /tmp/genswift:/tmp/bindings/bindings.jar \
+"\$JAVA_HOME/bin/jar" tf /tmp/bindings/bindings.jar | grep /swiftbindings/ | sed 's@\\.class\$@@' | \
+"\$JAVA_HOME/bin/java" -cp /tmp/genswift:/tmp/bindings/bindings.jar \
 genswift 'java/lang|java/util|java/sql' Sources ../java
 
 SCRIPT
