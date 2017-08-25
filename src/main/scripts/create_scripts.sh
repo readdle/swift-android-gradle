@@ -6,6 +6,7 @@
 #
 
 SWIFT_INSTALL="$(dirname $PWD)"
+SRC_SCRIPTS_DIR="$(realpath $(dirname $0))"
 ARCH=`uname`
 
 SCRIPTS=~/.gradle/scripts
@@ -117,7 +118,8 @@ SWIFT_INSTALL="$SWIFT_INSTALL"
 export PATH="\$SWIFT_INSTALL/usr/bin:\$PATH"
 export SWIFT_EXEC=~/.gradle/scripts/swiftc-android.sh
 
-swift build
+~/.gradle/scripts/collect-dependencies.py
+swift build "\$@"
 
 SCRIPT
 
@@ -126,6 +128,8 @@ cat <<SCRIPT >swiftc-android.sh &&
 #
 # Substitutes in for swiftc to compile package and build Android sources
 #
+
+PLATFORM=\$(uname)
 
 SWIFT_INSTALL="$SWIFT_INSTALL"
 export PATH="\$SWIFT_INSTALL/usr/$ARCH:\$SWIFT_INSTALL/usr/bin:\$PATH"
@@ -137,9 +141,32 @@ fi
 
 ARGS=\$(echo "\$*" | sed -E "s@-target [^[:space:]]+ -sdk /[^[:space:]]* (-F /[^[:space:]]* )?@@")
 
-if [[ "\$*" =~ " -emit-executable " ]]; then
-    LINKER_ARGS="-Xlinker -shared -Xlinker -export-dynamic -tools-directory \$SWIFT_INSTALL/usr/$ARCH"
-fi
+if [[ \$PLATFORM == "Darwin" ]]; then                                                                                   
+    # xctest                                                                                                           
+    if [[ "\$*" =~ "-Xlinker -bundle" ]]; then                                                                          
+        xctest_bundle=\$(echo \$ARGS | grep -o \$(pwd)'[^[:space:]]*xctest')                                              
+        rm -rf \$xctest_bundle                                                                                          
+                                                                                                                       
+        modulemaps=\$(find .build/checkouts -name '*.modulemap' | sed 's@^@-I @' | sed 's@/module.modulemap\$@@')        
+                                                                                                                       
+        build_dir=\$(echo "\$ARGS" | grep -o '\-L '\$(pwd)'/.build/[^[:space:]]*' | sed -E "s@-L @@")                     
+                                                                                                                       
+        ARGS=\$(echo "\$ARGS" | sed -E "s@-Xlinker -bundle@-emit-executable@")                                           
+        ARGS=\$(echo "\$ARGS" | sed -E "s@xctest[^[:space:]]*PackageTests@xctest@")                                      
+                                                                                                                       
+        ARGS="\$ARGS \$modulemaps -I \$build_dir Tests/LinuxMain.swift"                                                   
+    fi                                                                                                                 
+                                                                                                                       
+    # .dylib -> .so                                                                                                    
+    if [[ "\$ARGS" =~ "-emit-library" ]]; then                                                                          
+        ARGS=\$(echo "\$ARGS" | sed -E "s@\.dylib@\.so@")                                                                
+    fi                                                                                                                 
+fi                                                                                                                     
+                                                                                                                       
+# required since API21                                                                                                 
+if [[ "\$ARGS" =~ "-emit-executable" ]]; then                                                                           
+    LINKER_ARGS="-Xlinker -pie"                                                                                        
+fi 
 
 swiftc -target armv7-none-linux-androideabi \\
     -sdk "\$SWIFT_INSTALL/ndk-android-21" -L "\$SWIFT_INSTALL/usr/$ARCH" \\
@@ -162,6 +189,7 @@ rm -f *Unittest*
 
 SCRIPT
 
+cp $SRC_SCRIPTS_DIR/collect-dependencies.py $SCRIPTS/ &&
 chmod +x {generate-swift,swift-build,swiftc-android,copy-libraries}.sh &&
 echo Created: $SCRIPTS/{generate-swift,swift-build,swiftc-android,copy-libraries}.sh &&
 echo
