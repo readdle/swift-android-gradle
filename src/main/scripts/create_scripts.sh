@@ -7,7 +7,7 @@
 
 SWIFT_INSTALL="$(dirname $PWD)"
 SRC_SCRIPTS_DIR="$(realpath $(dirname $0))"
-ARCH=`uname`
+UNAME=`uname`
 
 SCRIPTS=~/.gradle/scripts
 
@@ -42,10 +42,10 @@ if [[ ! -f "$GLIBC_MODULEMAP.orig" ]]; then
     cp "$GLIBC_MODULEMAP" "$GLIBC_MODULEMAP.orig"
 fi &&
 
-sed -e s@/usr/local/android/ndk/platforms/android-21/arch-arm/@$SWIFT_INSTALL/ndk-android-21@ <"$GLIBC_MODULEMAP.orig" >"$GLIBC_MODULEMAP" &&
+sed -e "s@/usr/local/android/ndk/platforms/android-21/arch-arm/@$SWIFT_INSTALL/ndk-android-21@" <"$GLIBC_MODULEMAP.orig" >"$GLIBC_MODULEMAP" &&
 
 rm -f "$SWIFT_INSTALL/usr/bin/swift" &&
-if [[ "$ARCH" == "Darwin" ]]; then
+if [[ "$UNAME" == "Darwin" ]]; then
     SWIFT="$(xcode-select -p)/Toolchains/XcodeDefault.xctoolchain/usr/bin/swift"
 else
     SWIFT="$(which swift)"
@@ -132,7 +132,7 @@ cat <<SCRIPT >swiftc-android.sh &&
 PLATFORM=\$(uname)
 
 SWIFT_INSTALL="$SWIFT_INSTALL"
-export PATH="\$SWIFT_INSTALL/usr/$ARCH:\$SWIFT_INSTALL/usr/bin:\$PATH"
+export PATH="\$SWIFT_INSTALL/usr/$UNAME:\$SWIFT_INSTALL/usr/bin:\$PATH"
 
 if [[ "\$*" =~ " -fileno " ]]; then
     swift "\$@" || (echo "*** Error executing: \$0 \$@" && exit 1)
@@ -168,9 +168,13 @@ if [[ "\$ARGS" =~ "-emit-executable" ]]; then
     LINKER_ARGS="-Xlinker -pie"                                                                                        
 fi 
 
-swiftc -target armv7-none-linux-androideabi \\
-    -sdk "\$SWIFT_INSTALL/ndk-android-21" -L "\$SWIFT_INSTALL/usr/$ARCH" \\
-    \$LINKER_ARGS \$ARGS || (echo "*** Error executing: \$0 \$LINKER_ARGS \$ARGS" && exit 1)
+if [[ "\$ARGS" =~ " -emit-executable " && "\$ARGS" =~ ".so " ]]; then
+    ARGS=\$(echo "\$ARGS" | sed -E "s@ (-module-name [^[:space:]]+ )?-emit-executable @ -emit-library @")
+fi
+
+swiftc -target armv7-none-linux-androideabi -sdk "\$SWIFT_INSTALL/ndk-android-21" \\
+    -L "\$SWIFT_INSTALL/usr/$UNAME" -tools-directory "\$SWIFT_INSTALL/usr/$UNAME" \\
+    \$ARGS || (echo "*** Error executing: \$0 \$ARGS" && exit 1)
 
 SCRIPT
 
