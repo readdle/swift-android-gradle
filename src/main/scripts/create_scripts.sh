@@ -193,7 +193,16 @@ rm -f *Unittest*
 
 SCRIPT
 
+cat <<SCRIPT >run-tests.sh &&
+#!/bin/bash
+
+export SWIFT_INSTALL="$SWIFT_INSTALL"
+~/.gradle/scripts/run-tests.py
+SCRIPT
+
 cp $SRC_SCRIPTS_DIR/collect-dependencies.py $SCRIPTS/ &&
-chmod +x {generate-swift,swift-build,swiftc-android,copy-libraries}.sh &&
-echo Created: $SCRIPTS/{generate-swift,swift-build,swiftc-android,copy-libraries}.sh &&
+cp $SRC_SCRIPTS_DIR/run-tests.py $SCRIPTS/ &&
+
+chmod +x {generate-swift,swift-build,swiftc-android,copy-libraries,run-tests}.sh &&
+echo Created: $SCRIPTS/{generate-swift,swift-build,swiftc-android,copy-libraries,run-tests}.sh &&
 echo
