@@ -45,6 +45,8 @@ def run(json):
     push(folder, name)
     return exec_tests(folder, name)
 
+subprocess.call(["swift", "package", "resolve"])
+
 package_dump = subprocess.check_output(["swift", "package", "dump-package"])
 package_json = json.loads(package_dump)
 
