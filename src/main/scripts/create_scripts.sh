@@ -118,7 +118,6 @@ SWIFT_INSTALL="$SWIFT_INSTALL"
 export PATH="\$SWIFT_INSTALL/usr/bin:\$PATH"
 export SWIFT_EXEC=~/.gradle/scripts/swiftc-android.sh
 
-~/.gradle/scripts/collect-dependencies.py
 swift build "\$@"
 
 SCRIPT
@@ -200,6 +199,7 @@ cat <<SCRIPT >run-tests.sh &&
 #!/bin/bash
 
 export SWIFT_INSTALL="$SWIFT_INSTALL"
+export PATH="\$SWIFT_INSTALL/usr/bin:\$PATH"
 ~/.gradle/scripts/run-tests.py
 SCRIPT
 
