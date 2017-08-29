@@ -5,7 +5,7 @@
 # gradle/src/main/groovy/net/zhuoweizhang/swiftandroid/SwiftAndroidPlugin.groovy
 #
 
-SWIFT_INSTALL="$(dirname $PWD)"
+SWIFT_INSTALL="$(dirname "$PWD")"
 SRC_SCRIPTS_DIR="$(realpath $(dirname $0))"
 UNAME=`uname`
 
