@@ -6,7 +6,6 @@
 #
 
 SWIFT_INSTALL="$(dirname "$PWD")"
-SRC_SCRIPTS_DIR="$(realpath $(dirname $0))"
 UNAME=`uname`
 
 SCRIPTS=~/.gradle/scripts
@@ -118,7 +117,6 @@ SWIFT_INSTALL="$SWIFT_INSTALL"
 export PATH="\$SWIFT_INSTALL/usr/bin:\$PATH"
 export SWIFT_EXEC=~/.gradle/scripts/swiftc-android.sh
 
-~/.gradle/scripts/collect-dependencies.py
 swift build "\$@"
 
 SCRIPT
@@ -128,8 +126,6 @@ cat <<SCRIPT >swiftc-android.sh &&
 #
 # Substitutes in for swiftc to compile package and build Android sources
 #
-
-PLATFORM=\$(uname)
 
 SWIFT_INSTALL="$SWIFT_INSTALL"
 export PATH="\$SWIFT_INSTALL/usr/$UNAME:\$SWIFT_INSTALL/usr/bin:\$PATH"
@@ -142,33 +138,7 @@ fi
 # remove whatever target SwiftPM has supplied
 ARGS=\$(echo "\$*" | sed -E "s@-target [^[:space:]]+ -sdk /[^[:space:]]* (-F /[^[:space:]]* )?@@")
 
-if [[ \$PLATFORM == "Darwin" ]]; then                                                                                   
-    # xctest                                                                                                           
-    if [[ "\$*" =~ "-Xlinker -bundle" ]]; then                                                                          
-        xctest_bundle=\$(echo \$ARGS | grep -o \$(pwd)'[^[:space:]]*xctest')                                              
-        rm -rf \$xctest_bundle                                                                                          
-                                                                                                                       
-        modulemaps=\$(find .build/checkouts -name '*.modulemap' | sed 's@^@-I @' | sed 's@/module.modulemap\$@@')        
-                                                                                                                       
-        build_dir=\$(echo "\$ARGS" | grep -o '\-L '\$(pwd)'/.build/[^[:space:]]*' | sed -E "s@-L @@")                     
-                                                                                                                       
-        ARGS=\$(echo "\$ARGS" | sed -E "s@-Xlinker -bundle@-emit-executable@")                                           
-        ARGS=\$(echo "\$ARGS" | sed -E "s@xctest[^[:space:]]*PackageTests@xctest@")                                      
-                                                                                                                       
-        ARGS="\$ARGS \$modulemaps -I \$build_dir Tests/LinuxMain.swift"                                                   
-    fi                                                                                                                 
-                                                                                                                       
-    # .dylib -> .so                                                                                                    
-    if [[ "\$ARGS" =~ "-emit-library" ]]; then                                                                          
-        ARGS=\$(echo "\$ARGS" | sed -E "s@\.dylib@\.so@")                                                                
-    fi                                                                                                                 
-fi                                                                                                                     
-                                                                                                                       
-# required since API21                                                                                                 
-if [[ "\$ARGS" =~ "-emit-executable" ]]; then                                                                           
-    LINKER_ARGS="-Xlinker -pie"                                                                                        
-fi 
-
+# for compatability with V3 Package.swift for now
 if [[ "\$ARGS" =~ " -emit-executable " && "\$ARGS" =~ ".so " ]]; then
     ARGS=\$(echo "\$ARGS" | sed -E "s@ (-module-name [^[:space:]]+ )?-emit-executable @ -emit-library @")
 fi
@@ -195,16 +165,6 @@ rm -f *Unittest*
 
 SCRIPT
 
-cat <<SCRIPT >run-tests.sh &&
-#!/bin/bash
-
-export SWIFT_INSTALL="$SWIFT_INSTALL"
-~/.gradle/scripts/run-tests.py
-SCRIPT
-
-cp $SRC_SCRIPTS_DIR/collect-dependencies.py $SCRIPTS/ &&
-cp $SRC_SCRIPTS_DIR/run-tests.py $SCRIPTS/ &&
-
-chmod +x {generate-swift,swift-build,swiftc-android,copy-libraries,run-tests}.sh &&
-echo Created: $SCRIPTS/{generate-swift,swift-build,swiftc-android,copy-libraries,run-tests}.sh &&
+chmod +x {generate-swift,swift-build,swiftc-android,copy-libraries}.sh &&
+echo Created: $SCRIPTS/{generate-swift,swift-build,swiftc-android,copy-libraries}.sh &&
 echo
