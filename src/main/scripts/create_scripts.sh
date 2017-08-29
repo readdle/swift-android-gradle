@@ -139,6 +139,7 @@ if [[ "\$*" =~ " -fileno " ]]; then
     exit $?
 fi
 
+# remove whatever target SwiftPM has supplied
 ARGS=\$(echo "\$*" | sed -E "s@-target [^[:space:]]+ -sdk /[^[:space:]]* (-F /[^[:space:]]* )?@@")
 
 if [[ \$PLATFORM == "Darwin" ]]; then                                                                                   
@@ -172,6 +173,7 @@ if [[ "\$ARGS" =~ " -emit-executable " && "\$ARGS" =~ ".so " ]]; then
     ARGS=\$(echo "\$ARGS" | sed -E "s@ (-module-name [^[:space:]]+ )?-emit-executable @ -emit-library @")
 fi
 
+# compile using toolchain's swiftc with Android target
 swiftc -target armv7-none-linux-androideabi -sdk "\$SWIFT_INSTALL/ndk-android-21" \\
     -L "\$SWIFT_INSTALL/usr/$UNAME" -tools-directory "\$SWIFT_INSTALL/usr/$UNAME" \\
     \$ARGS || (echo "*** Error executing: \$0 \$ARGS" && exit 1)
