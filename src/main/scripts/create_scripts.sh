@@ -168,11 +168,6 @@ if [[ "\$ARGS" =~ " -emit-executable " && "\$ARGS" =~ ".so " ]]; then
     ARGS=\$(echo "\$ARGS" | sed -E "s@ (-module-name [^[:space:]]+ )?-emit-executable @ -emit-library @")
 fi
 
-# required since API21
-if [[ "\$ARGS" =~ "-emit-executable" ]]; then
-    ARGS="\$ARGS -Xlinker -pie"
-fi
-
 # compile using toolchain's swiftc with Android target
 swiftc -target armv7-none-linux-androideabi -sdk "\$SWIFT_INSTALL/ndk-android-21" \\
     -L "\$SWIFT_INSTALL/usr/$UNAME" -tools-directory "\$SWIFT_INSTALL/usr/$UNAME" \\
