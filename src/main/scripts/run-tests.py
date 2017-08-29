@@ -24,7 +24,8 @@ def push(dst, name):
     adb_push(dst, [".build/debug/" + name])
 
 def adb_push(dst, files):
-    subprocess.call(["adb", "push"] + files + [dst])
+    for f in files:
+        subprocess.call(["adb", "push", f, dst])
 
 def adb_shell(args):
     return subprocess.call(["adb", "shell"] + args)

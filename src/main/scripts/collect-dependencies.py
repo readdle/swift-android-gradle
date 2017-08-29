@@ -20,7 +20,12 @@ def traverse(root_node, func):
     _traverse(root_node, func, True)
 
 def copytree(src, dst, symlinks=False, ignore=None):
-    print(subprocess.check_output(["rsync", "-r"] + glob.glob(src) + [dst]))
+    src_files = glob.glob(src)
+
+    if len(src_files) == 0:
+        return
+
+    subprocess.call(["rsync", "-r"] + src_files + [dst])
 
 
 def copy_prebuilt(src, dst):
