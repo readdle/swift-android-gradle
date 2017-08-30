@@ -38,7 +38,6 @@ def exec_tests(folder, name):
 
 
 def run(json):
-    subprocess.call([expanduser("~/.gradle/scripts/collect-dependencies.py")])
     subprocess.call([expanduser("~/.gradle/scripts/swift-build.sh"), "--build-tests"])
 
     name = extract_tests_package(package_json)

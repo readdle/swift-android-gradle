@@ -5,13 +5,13 @@
 # gradle/src/main/groovy/net/zhuoweizhang/swiftandroid/SwiftAndroidPlugin.groovy
 #
 
+export ANDROID_HOME="${ANDROID_HOME?-Please export ANDROID_HOME}"
+export JAVA_HOME="${JAVA_HOME?-Please export JAVA_HOME}"
+
 SWIFT_INSTALL="$(dirname "$PWD")"
-SRC_SCRIPTS_DIR="$PWD/$(dirname $0)"
-UNAME=`uname`
+UNAME="$(uname)"
 
 SCRIPTS=~/.gradle/scripts
-
-export JAVA_HOME="${JAVA_HOME?-Please export JAVA_HOME}"
 
 cat <<DOC &&
 
@@ -118,6 +118,9 @@ SWIFT_INSTALL="$SWIFT_INSTALL"
 export PATH="\$SWIFT_INSTALL/usr/bin:\$PATH"
 export SWIFT_EXEC=~/.gradle/scripts/swiftc-android.sh
 
+# Uncomment if you would like to work with packages containing prebuilt binaries
+#"\$SWIFT_INSTALL"/swift-android-gradle/src/main/scripts/collect-dependencies.py
+
 swift build "\$@"
 
 SCRIPT
@@ -127,8 +130,6 @@ cat <<SCRIPT >swiftc-android.sh &&
 #
 # Substitutes in for swiftc to compile package and build Android sources
 #
-
-PLATFORM=\$(uname)
 
 SWIFT_INSTALL="$SWIFT_INSTALL"
 export PATH="\$SWIFT_INSTALL/usr/$UNAME:\$SWIFT_INSTALL/usr/bin:\$PATH"
@@ -141,7 +142,7 @@ fi
 # remove whatever target SwiftPM has supplied
 ARGS=\$(echo "\$*" | sed -E "s@-target [^[:space:]]+ -sdk /[^[:space:]]* (-F /[^[:space:]]* )?@@")
 
-if [[ \$PLATFORM == "Darwin" ]]; then
+if [[ "$UNAME" == "Darwin" ]]; then
     # xctest
     if [[ "\$*" =~ "-Xlinker -bundle" ]]; then
         xctest_bundle=\$(echo \$ARGS | grep -o \$(pwd)'[^[:space:]]*xctest')
@@ -164,9 +165,9 @@ if [[ \$PLATFORM == "Darwin" ]]; then
 fi
 
 # for compatability with V3 Package.swift for now
-if [[ "\$ARGS" =~ " -emit-executable " && "\$ARGS" =~ ".so " ]]; then
-    ARGS=\$(echo "\$ARGS" | sed -E "s@ (-module-name [^[:space:]]+ )?-emit-executable @ -emit-library @")
-fi
+#if [[ "\$ARGS" =~ " -emit-executable " && "\$ARGS" =~ ".so " ]]; then
+#    ARGS=\$(echo "\$ARGS" | sed -E "s@ (-module-name [^[:space:]]+ )?-emit-executable @ -emit-library @")
+#fi
 
 # compile using toolchain's swiftc with Android target
 swiftc -target armv7-none-linux-androideabi -sdk "\$SWIFT_INSTALL/ndk-android-21" \\
@@ -185,21 +186,20 @@ DESTINATION="\$1"
 SWIFT_INSTALL="$SWIFT_INSTALL"
 
 mkdir -p "\$DESTINATION" && cd "\$DESTINATION" &&
-rsync -u "\$SWIFT_INSTALL"/usr/lib/swift/android/*.so . &&
-rm -f *Unittest*
+rsync -u "\$SWIFT_INSTALL"/usr/lib/swift/android/*.so .
 
 SCRIPT
 
 cat <<SCRIPT >run-tests.sh &&
 #!/bin/bash
+#
+# Builds test bundles and pushes them to the device and runs them
+#
 
 export SWIFT_INSTALL="$SWIFT_INSTALL"
-export PATH="\$SWIFT_INSTALL/usr/bin:\$PATH"
-~/.gradle/scripts/run-tests.py
-SCRIPT
+"\$SWIFT_INSTALL"/swift-android-gradle/src/main/scripts/run-tests.py
 
-cp $SRC_SCRIPTS_DIR/collect-dependencies.py $SCRIPTS/ &&
-cp $SRC_SCRIPTS_DIR/run-tests.py $SCRIPTS/ &&
+SCRIPT
 
 chmod +x {generate-swift,swift-build,swiftc-android,copy-libraries,run-tests}.sh &&
 echo Created: $SCRIPTS/{generate-swift,swift-build,swiftc-android,copy-libraries,run-tests}.sh &&
