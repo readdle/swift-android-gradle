@@ -5,12 +5,13 @@
 # gradle/src/main/groovy/net/zhuoweizhang/swiftandroid/SwiftAndroidPlugin.groovy
 #
 
+export ANDROID_HOME="${ANDROID_HOME?-Please export ANDROID_HOME}"
+export JAVA_HOME="${JAVA_HOME?-Please export JAVA_HOME}"
+
 SWIFT_INSTALL="$(dirname "$PWD")"
-UNAME=`uname`
+UNAME="$(uname)"
 
 SCRIPTS=~/.gradle/scripts
-
-export JAVA_HOME="${JAVA_HOME?-Please export JAVA_HOME}"
 
 cat <<DOC &&
 
@@ -117,6 +118,9 @@ SWIFT_INSTALL="$SWIFT_INSTALL"
 export PATH="\$SWIFT_INSTALL/usr/bin:\$PATH"
 export SWIFT_EXEC=~/.gradle/scripts/swiftc-android.sh
 
+# Uncomment if you would like to work with packages containing prebuilt binaries
+#"\$SWIFT_INSTALL"/swift-android-gradle/src/main/scripts/collect-dependencies.py
+
 swift build "\$@"
 
 SCRIPT
@@ -138,10 +142,32 @@ fi
 # remove whatever target SwiftPM has supplied
 ARGS=\$(echo "\$*" | sed -E "s@-target [^[:space:]]+ -sdk /[^[:space:]]* (-F /[^[:space:]]* )?@@")
 
-# for compatability with V3 Package.swift for now
-if [[ "\$ARGS" =~ " -emit-executable " && "\$ARGS" =~ ".so " ]]; then
-    ARGS=\$(echo "\$ARGS" | sed -E "s@ (-module-name [^[:space:]]+ )?-emit-executable @ -emit-library @")
+if [[ "$UNAME" == "Darwin" ]]; then
+    # xctest
+    if [[ "\$*" =~ "-Xlinker -bundle" ]]; then
+        xctest_bundle=\$(echo \$ARGS | grep -o \$(pwd)'[^[:space:]]*xctest')
+        rm -rf \$xctest_bundle
+
+        modulemaps=\$(find .build/checkouts -name '*.modulemap' | sed 's@^@-I @' | sed 's@/module.modulemap\$@@')
+
+        build_dir=\$(echo "\$ARGS" | grep -o '\-L '\$(pwd)'/.build/[^[:space:]]*' | sed -E "s@-L @@")
+
+        ARGS=\$(echo "\$ARGS" | sed -E "s@-Xlinker -bundle@-emit-executable@")
+        ARGS=\$(echo "\$ARGS" | sed -E "s@xctest[^[:space:]]*PackageTests@xctest@")
+
+        ARGS="\$ARGS \$modulemaps -I \$build_dir Tests/LinuxMain.swift"
+    fi
+
+    # .dylib -> .so
+    if [[ "\$ARGS" =~ "-emit-library" ]]; then
+        ARGS=\$(echo "\$ARGS" | sed -E "s@\.dylib@\.so@")
+    fi
 fi
+
+# for compatability with V3 Package.swift for now
+#if [[ "\$ARGS" =~ " -emit-executable " && "\$ARGS" =~ ".so " ]]; then
+#    ARGS=\$(echo "\$ARGS" | sed -E "s@ (-module-name [^[:space:]]+ )?-emit-executable @ -emit-library @")
+#fi
 
 # compile using toolchain's swiftc with Android target
 swiftc -target armv7-none-linux-androideabi -sdk "\$SWIFT_INSTALL/ndk-android-21" \\
@@ -160,11 +186,21 @@ DESTINATION="\$1"
 SWIFT_INSTALL="$SWIFT_INSTALL"
 
 mkdir -p "\$DESTINATION" && cd "\$DESTINATION" &&
-rsync -u "\$SWIFT_INSTALL"/usr/lib/swift/android/*.so . &&
-rm -f *Unittest*
+rsync -u "\$SWIFT_INSTALL"/usr/lib/swift/android/*.so .
 
 SCRIPT
 
-chmod +x {generate-swift,swift-build,swiftc-android,copy-libraries}.sh &&
-echo Created: $SCRIPTS/{generate-swift,swift-build,swiftc-android,copy-libraries}.sh &&
+cat <<SCRIPT >run-tests.sh &&
+#!/bin/bash
+#
+# Builds test bundles and pushes them to the device and runs them
+#
+
+export SWIFT_INSTALL="$SWIFT_INSTALL"
+"\$SWIFT_INSTALL"/swift-android-gradle/src/main/scripts/run-tests.py
+
+SCRIPT
+
+chmod +x {generate-swift,swift-build,swiftc-android,copy-libraries,run-tests}.sh &&
+echo Created: $SCRIPTS/{generate-swift,swift-build,swiftc-android,copy-libraries,run-tests}.sh &&
 echo
