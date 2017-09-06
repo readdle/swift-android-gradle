@@ -192,7 +192,7 @@ SWIFT_INSTALL="$SWIFT_INSTALL"
 PREBUILTS="\$(find "\$PWD"/src/main/swift/.build/checkouts -name '*.so')"
 
 mkdir -p "\$DESTINATION" && cd "\$DESTINATION" &&
-rsync -a "\$SWIFT_INSTALL"/usr/lib/swift/android/*.so \$PREBUILTS .
+rsync -a \$PREBUILTS "\$SWIFT_INSTALL"/usr/lib/swift/android/*.so .
 
 SCRIPT
 
