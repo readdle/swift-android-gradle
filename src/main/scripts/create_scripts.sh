@@ -167,11 +167,13 @@ if [[ "\$ARGS" =~ " -emit-executable " && "\$ARGS" =~ ".so " ]]; then
 fi
 
 # link in prebuilt libraries
-for lib in \`find "\$PWD"/.build/checkouts -name '*.so'\`; do
-    DIR="\$(dirname \$lib)"
-    LIB="\$(basename \$lib | sed -E 's@^lib|.so\$@@g')"
-    ARGS="\$ARGS -L\$DIR -l\$LIB"
-done
+if [[ "\$ARGS" =~ " -emit-executable " || "\$ARGS" =~ " -emit-library " ]]; then
+    for lib in \`find "\$PWD"/.build/checkouts -name '*.so'\`; do
+        DIR="\$(dirname \$lib)"
+        LIB="\$(basename \$lib | sed -E 's@^lib|.so\$@@g')"
+        ARGS="\$ARGS -L\$DIR -l\$LIB"
+    done
+fi
 
 # compile using toolchain's swiftc with Android target
 swiftc -target armv7-none-linux-androideabi -sdk "\$SWIFT_INSTALL/ndk-android-21" \\
