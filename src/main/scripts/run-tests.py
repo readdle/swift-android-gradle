@@ -10,8 +10,14 @@ import glob
 import platform
 from os.path import expanduser
 
-
 SWIFT_INSTALL=os.getenv("SWIFT_INSTALL")
+
+def check_return_code(code):
+    if code != 0:
+        sys.exit(code)
+
+def sh_checked(cmd):
+    check_return_code(subprocess.call(cmd))
 
 def extract_tests_package(json):
     return json["name"] + "PackageTests.xctest"
@@ -25,10 +31,10 @@ def push(dst, name):
 
 def adb_push(dst, files):
     for f in files:
-        subprocess.call(["adb", "push", f, dst])
+        sh_checked(["adb", "push", f, dst])
 
 def adb_shell(args):
-    return subprocess.call(["adb", "shell"] + args)
+    return sh_checked(["adb", "shell"] + args)
 
 def exec_tests(folder, name):
     ld_path = "LD_LIBRARY_PATH=" + folder
@@ -38,7 +44,7 @@ def exec_tests(folder, name):
 
 
 def run(json):
-    subprocess.call([expanduser("~/.gradle/scripts/swift-build.sh"), "--build-tests"])
+    sh_checked([expanduser("~/.gradle/scripts/swift-build.sh"), "--build-tests"])
 
     name = extract_tests_package(package_json)
     folder = "/data/local/tmp/" + name.split(".")[0]
@@ -46,10 +52,9 @@ def run(json):
     push(folder, name)
     return exec_tests(folder, name)
 
-subprocess.call(["swift", "package", "resolve"])
+sh_checked(["swift", "package", "resolve"])
 
 package_dump = subprocess.check_output(["swift", "package", "dump-package"])
 package_json = json.loads(package_dump)
 
-return_code = run(package_json)
-sys.exit(return_code)
+run(package_json)

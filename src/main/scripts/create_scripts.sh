@@ -5,11 +5,12 @@
 # gradle/src/main/groovy/net/zhuoweizhang/swiftandroid/SwiftAndroidPlugin.groovy
 #
 
-export ANDROID_HOME="${ANDROID_HOME?-Please export ANDROID_HOME}"
+export ANDROID_NDK="${ANDROID_NDK?-Please export ANDROID_NDK}"
 export JAVA_HOME="${JAVA_HOME?-Please export JAVA_HOME}"
 
 SWIFT_INSTALL="$(dirname "$PWD")"
 UNAME="$(uname)"
+UNAME_LOWERCASED="$(uname | tr '[:upper:]' '[:lower:]')"
 
 SCRIPTS=~/.gradle/scripts
 
@@ -44,9 +45,32 @@ fi &&
 
 sed -e "s@/usr/local/android/ndk/platforms/android-21/arch-arm/@$SWIFT_INSTALL/ndk-android-21@" <"$GLIBC_MODULEMAP.orig" >"$GLIBC_MODULEMAP" &&
 
+install_patched_swift_build() {
+    pushd /tmp
+        git clone https://github.com/zayass/swift-package-manager.git
+
+        pushd swift-package-manager
+            git checkout swift-4.0-branch
+            swift build
+            cp .build/debug/swift-build $SWIFT_INSTALL/usr/$UNAME/
+            ln -s $(xcrun --find swift-build-tool) $SWIFT_INSTALL/usr/$UNAME/
+        popd
+
+        rm -rf swift-package-manager
+    popd
+}
+
+copy_swift_pm_runtime() {
+    local xcode_toolchain=$(dirname $(dirname $(dirname $(xcrun --find swiftc))))
+    cp -r $xcode_toolchain/usr/lib/swift/pm $SWIFT_INSTALL/usr/lib/swift/
+}
+
 rm -f "$SWIFT_INSTALL/usr/bin/swift" &&
 if [[ "$UNAME" == "Darwin" ]]; then
-    SWIFT="$(xcode-select -p)/Toolchains/XcodeDefault.xctoolchain/usr/bin/swift"
+    install_patched_swift_build
+    copy_swift_pm_runtime
+
+    SWIFT="$(xcrun --find swift)"
 else
     SWIFT="$(which swift)"
     if [[ "$SWIFT" == "" ]]; then
@@ -115,22 +139,21 @@ cat <<SCRIPT >swift-build.sh &&
 #
 
 SWIFT_INSTALL="$SWIFT_INSTALL"
+
 export PATH="\$SWIFT_INSTALL/usr/bin:\$PATH"
+export CC="\$ANDROID_NDK/toolchains/llvm/prebuilt/$UNAME_LOWERCASED-x86_64/bin/clang"
 export SWIFT_EXEC=~/.gradle/scripts/swiftc-android.sh
 
-HOST_FILE="\$(find . -name AndroidInjectionHost.swift)"
-if [[ "\$HOST_FILE" != "" ]]; then
-    HOST_TMP="/tmp/AndroidInjectionHost.swift"
-    perl <<PERL >"\$HOST_TMP" &&
-use IO::Socket::INET;
-print "let androidInjectionHost = \\"@{[IO::Socket::INET->new(PeerAddr=>'8.8.8.8:53', Proto=>'udp')->sockhost]}\\"\\n";
-PERL
-    diff "\$HOST_FILE" "\$HOST_TMP" || (grep NNN.NNN.NNN.NNN "\$HOST_FILE" >/dev/null && chmod +w "\$HOST_FILE"; mv -f "\$HOST_TMP" "\$HOST_FILE")
-fi
-
-swift build "\$@"
+# Uncomment if you would like to work with packages containing prebuilt binaries
+"\$SWIFT_INSTALL"/swift-android-gradle/src/main/scripts/collect-dependencies.py
 
 SCRIPT
+if [[ "$UNAME" == "Darwin" ]]; then
+    echo '"$SWIFT_INSTALL"/usr/Darwin/swift-build --destination=$HOME/.gradle/scripts/android-destination.json "$@"' >> swift-build.sh
+else
+    echo 'swift build --destination=$HOME/.gradle/scripts/android-destination.json "$@"' >> swift-build.sh
+fi
+
 
 cat <<SCRIPT >swiftc-android.sh &&
 #!/bin/bash
@@ -142,54 +165,20 @@ SWIFT_INSTALL="$SWIFT_INSTALL"
 export PATH="\$SWIFT_INSTALL/usr/bin:\$SWIFT_INSTALL/usr/$UNAME:\$PATH"
 
 if [[ "\$*" =~ " -fileno " ]]; then
-    swift "\$@" || (echo "*** Error executing: \$0 \$@" && exit 1)
-    exit $?
-fi
-
-# remove whatever target SwiftPM has supplied
-ARGS=\$(echo "\$*" | sed -E "s@-target [^[:space:]]+ -sdk /[^[:space:]]* (-F /[^[:space:]]* )?@@")
-
-if [[ "$UNAME" == "Darwin" ]]; then
-    # xctest
-    if [[ "\$*" =~ "-Xlinker -bundle" ]]; then
-        xctest_bundle=\$(echo \$ARGS | grep -o \$(pwd)'[^[:space:]]*xctest')
-        rm -rf \$xctest_bundle
-
-        modulemaps=\$(find .build/checkouts -name '*.modulemap' | sed 's@^@-I @' | sed 's@/module.modulemap\$@@')
-
-        build_dir=\$(echo "\$ARGS" | grep -o '\-L '\$(pwd)'/.build/[^[:space:]]*' | sed -E "s@-L @@")
-
-        ARGS=\$(echo "\$ARGS" | sed -E "s@-Xlinker -bundle@-emit-executable@")
-        ARGS=\$(echo "\$ARGS" | sed -E "s@xctest[^[:space:]]*PackageTests@xctest@")
-
-        ARGS="\$ARGS \$modulemaps -I \$build_dir Tests/LinuxMain.swift"
-    fi
-
-    # .dylib -> .so
-    if [[ "\$ARGS" =~ "-emit-library" ]]; then
-        ARGS=\$(echo "\$ARGS" | sed -E "s@\.dylib@\.so@")
-    fi
-fi
-
-# for compatability with V3 Package.swift for now
-if [[ "\$ARGS" =~ " -emit-executable " && "\$ARGS" =~ ".so " ]]; then
-    ARGS=\$(echo "\$ARGS" | sed -E "s@ (-module-name [^[:space:]]+ )?-emit-executable @ -emit-library @")
-fi
-
-# link in prebuilt libraries
-if [[ "\$ARGS" =~ " -emit-executable " || "\$ARGS" =~ " -emit-library " ]]; then
-    for lib in \`find "\$PWD"/.build/checkouts -name '*.so'\`; do
-        DIR="\$(dirname \$lib)"
-        LIB="\$(basename \$lib | sed -E 's@^lib|.so\$@@g')"
-        ARGS="\$ARGS -L\$DIR -l\$LIB"
-    done
+    swift "\$@" || { 
+        return_code=\$? 
+        echo "*** Error executing: \$0 \$@"
+        exit \$return_code
+    }
+    exit 0
 fi
 
 # compile using toolchain's swiftc with Android target
-swiftc -target armv7-none-linux-androideabi -sdk "\$SWIFT_INSTALL/ndk-android-21" \\
-    -L "\$SWIFT_INSTALL/usr/$UNAME" -tools-directory "\$SWIFT_INSTALL/usr/$UNAME" \\
-    \$ARGS || (echo "*** Error executing: \$0 \$ARGS" && exit 1)
-
+swiftc "\$@" || { 
+    return_code=\$? 
+    echo "*** Error executing: \$0 \$@"
+    exit \$return_code
+}
 SCRIPT
 
 cat <<SCRIPT >copy-libraries.sh &&
@@ -217,6 +206,33 @@ cat <<SCRIPT >run-tests.sh &&
 export SWIFT_INSTALL="$SWIFT_INSTALL"
 "\$SWIFT_INSTALL"/swift-android-gradle/src/main/scripts/run-tests.py
 
+SCRIPT
+
+cat <<SCRIPT >android-destination.json &&
+{
+    "version": 1,
+    "dynamic-library-extension": "so",
+
+    "target": "armv7-unknown-linux-androideabi",
+    "sdk": "$SWIFT_INSTALL/ndk-android-21",
+    "toolchain-bin-dir": "$SWIFT_INSTALL/usr/$UNAME",
+
+    "extra-swiftc-flags": [
+        "-use-ld=gold", 
+        "-tools-directory", 
+        "$SWIFT_INSTALL/usr/$UNAME",
+        "-L$SWIFT_INSTALL/usr/$UNAME"
+    ],
+    "extra-cc-flags": [
+        "-fPIC",
+        "-fblocks",
+        "-I$ANDROID_NDK/sources/cxx-stl/llvm-libc++/include",
+        "-I$SWIFT_INSTALL/usr/lib/swift"
+    ],
+    "extra-cpp-flags": [
+        "-lc++_shared"
+    ]
+}
 SCRIPT
 
 chmod +x {generate-swift,swift-build,swiftc-android,copy-libraries,run-tests}.sh &&
