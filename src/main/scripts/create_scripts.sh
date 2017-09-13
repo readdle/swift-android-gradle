@@ -53,7 +53,7 @@ install_patched_swift_build() {
             git checkout swift-4.0-branch
             swift build
             cp .build/debug/swift-build $SWIFT_INSTALL/usr/$UNAME/
-            ln -s $(xcrun --find swift-build-tool) $SWIFT_INSTALL/usr/$UNAME/
+            ln -s -f $(xcrun --find swift-build-tool) $SWIFT_INSTALL/usr/$UNAME/
         popd
 
         rm -rf swift-package-manager
@@ -144,14 +144,16 @@ export PATH="\$SWIFT_INSTALL/usr/bin:\$PATH"
 export CC="\$ANDROID_NDK/toolchains/llvm/prebuilt/$UNAME_LOWERCASED-x86_64/bin/clang"
 export SWIFT_EXEC=~/.gradle/scripts/swiftc-android.sh
 
-# Uncomment if you would like to work with packages containing prebuilt binaries
-"\$SWIFT_INSTALL"/swift-android-gradle/src/main/scripts/collect-dependencies.py
+include=-I.build/jniLibs/include
+libs=-L.build/jniLibs/armeabi-v7a
+
+flags="-Xcc \$include -Xswiftc \$include -Xswiftc \$libs"
 
 SCRIPT
 if [[ "$UNAME" == "Darwin" ]]; then
-    echo '"$SWIFT_INSTALL"/usr/Darwin/swift-build --destination=$HOME/.gradle/scripts/android-destination.json "$@"' >> swift-build.sh
+    echo '"$SWIFT_INSTALL"/usr/Darwin/swift-build --destination=$HOME/.gradle/scripts/android-destination.json $flags "$@"' >> swift-build.sh
 else
-    echo 'swift build --destination=$HOME/.gradle/scripts/android-destination.json "$@"' >> swift-build.sh
+    echo 'swift build --destination=$HOME/.gradle/scripts/android-destination.json $flags "$@"' >> swift-build.sh
 fi
 
 
@@ -204,7 +206,29 @@ cat <<SCRIPT >run-tests.sh &&
 #
 
 export SWIFT_INSTALL="$SWIFT_INSTALL"
-"\$SWIFT_INSTALL"/swift-android-gradle/src/main/scripts/run-tests.py
+"\$SWIFT_INSTALL"/swift-android-gradle/src/main/scripts/run_tests.py "\$@"
+
+SCRIPT
+
+cat <<SCRIPT >collect-dependencies.sh &&
+#!/bin/bash
+#
+# Builds external build system such as ndk-build recursively
+#
+
+export SWIFT_INSTALL="$SWIFT_INSTALL"
+"\$SWIFT_INSTALL"/swift-android-gradle/src/main/scripts/collect_dependencies.py "\$@"
+
+SCRIPT
+
+cat <<SCRIPT >invoke-external-build.sh &&
+#!/bin/bash
+#
+# Builds external build system such as ndk-build recursively
+#
+
+export SWIFT_INSTALL="$SWIFT_INSTALL"
+"\$SWIFT_INSTALL"/swift-android-gradle/src/main/scripts/invoke_external_build.py "\$@"
 
 SCRIPT
 
@@ -235,7 +259,7 @@ cat <<SCRIPT >android-destination.json &&
 }
 SCRIPT
 
-chmod +x {generate-swift,swift-build,swiftc-android,copy-libraries,run-tests}.sh &&
+chmod +x {generate-swift,swift-build,swiftc-android,copy-libraries,run-tests,invoke-external-build}.sh &&
 echo Created: $SCRIPTS/{generate-swift,swift-build,swiftc-android,copy-libraries,run-tests}.sh &&
 echo
 
