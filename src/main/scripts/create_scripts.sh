@@ -129,7 +129,7 @@ cat <<SCRIPT >swiftc-android.sh &&
 #
 
 SWIFT_INSTALL="$SWIFT_INSTALL"
-export PATH="\$SWIFT_INSTALL/usr/$UNAME:\$SWIFT_INSTALL/usr/bin:\$PATH"
+export PATH="\$SWIFT_INSTALL/usr/bin:\$SWIFT_INSTALL/usr/$UNAME:\$PATH"
 
 if [[ "\$*" =~ " -fileno " ]]; then
     swift "\$@" || (echo "*** Error executing: \$0 \$@" && exit 1)
