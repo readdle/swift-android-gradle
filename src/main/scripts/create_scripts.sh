@@ -118,6 +118,16 @@ SWIFT_INSTALL="$SWIFT_INSTALL"
 export PATH="\$SWIFT_INSTALL/usr/bin:\$PATH"
 export SWIFT_EXEC=~/.gradle/scripts/swiftc-android.sh
 
+HOST_FILE="\$(find . -name AndroidInjectionHost.swift)"
+if [[ "\$HOST_FILE" != "" ]]; then
+    HOST_TMP="/tmp/AndroidInjectionHost.swift"
+    perl <<PERL >"\$HOST_TMP" &&
+use IO::Socket::INET;
+print "let androidInjectionHost = \\"@{[IO::Socket::INET->new(PeerAddr=>'8.8.8.8:53', Proto=>'udp')->sockhost]}\\"\\n";
+PERL
+    (diff "\$HOST_FILE" "\$HOST_TMP" || (chmod +w "\$HOST_FILE" && mv -f "\$HOST_TMP" "\$HOST_FILE"))
+fi
+
 swift build "\$@"
 
 SCRIPT
