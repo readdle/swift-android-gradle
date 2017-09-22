@@ -125,7 +125,7 @@ if [[ "\$HOST_FILE" != "" ]]; then
 use IO::Socket::INET;
 print "let androidInjectionHost = \\"@{[IO::Socket::INET->new(PeerAddr=>'8.8.8.8:53', Proto=>'udp')->sockhost]}\\"\\n";
 PERL
-    (diff "\$HOST_FILE" "\$HOST_TMP" || (chmod +w "\$HOST_FILE" && mv -f "\$HOST_TMP" "\$HOST_FILE"))
+    diff "\$HOST_FILE" "\$HOST_TMP" || (grep NNN.NNN.NNN.NNN "\$HOST_FILE" >/dev/null && chmod +w "\$HOST_FILE"; mv -f "\$HOST_TMP" "\$HOST_FILE")
 fi
 
 swift build "\$@"
@@ -222,3 +222,10 @@ SCRIPT
 chmod +x {generate-swift,swift-build,swiftc-android,copy-libraries,run-tests}.sh &&
 echo Created: $SCRIPTS/{generate-swift,swift-build,swiftc-android,copy-libraries,run-tests}.sh &&
 echo
+
+cd "$SWIFT_INSTALL"
+if [[ ! -d Injection4Android ]]; then
+    git clone https://github.com/SwiftJava/Injection4Android.git
+    echo "Cloned Injection4Android for runtime code injection"
+    echo "See https://github.com/SwiftJava/Injection4Android"
+fi
