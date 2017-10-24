@@ -192,10 +192,8 @@ cat <<SCRIPT >copy-libraries.sh &&
 DESTINATION="\$1"
 SWIFT_INSTALL="$SWIFT_INSTALL"
 
-PREBUILTS="\$(find "\$PWD"/src/main/swift/.build/checkouts -name '*.so')"
-
 mkdir -p "\$DESTINATION" && cd "\$DESTINATION" &&
-rsync -a \$PREBUILTS "\$SWIFT_INSTALL"/usr/lib/swift/android/*.so .
+rsync -a "\$SWIFT_INSTALL"/usr/lib/swift/android/*.so .
 
 SCRIPT
 

@@ -68,7 +68,10 @@ public class SwiftAndroidPlugin implements Plugin<Project> {
     private static Task createCopyTask(Project project, String name) {
         return project.task(type: Copy, name) {
             from("src/main/swift/.build/debug")
+            from("src/main/swift/.build/jniLibs/armeabi-v7a")
+
             include("*.so")
+
             into("src/main/jniLibs/armeabi-v7a")
             
             fileMode 0644
