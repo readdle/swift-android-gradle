@@ -144,6 +144,16 @@ export PATH="\$SWIFT_INSTALL/usr/bin:\$PATH"
 export CC="\$ANDROID_NDK/toolchains/llvm/prebuilt/$UNAME_LOWERCASED-x86_64/bin/clang"
 export SWIFT_EXEC=~/.gradle/scripts/swiftc-android.sh
 
+HOST_FILE="\$(find . -name AndroidInjectionHost.swift)"
+if [[ "\$HOST_FILE" != "" ]]; then
+    HOST_TMP="/tmp/AndroidInjectionHost.swift"
+    perl <<PERL >"\$HOST_TMP" &&
+use IO::Socket::INET;
+print "let androidInjectionHost = \\"@{[IO::Socket::INET->new(PeerAddr=>'8.8.8.8:53', Proto=>'udp')->sockhost]}\\"\\n";
+PERL
+    diff "\$HOST_FILE" "\$HOST_TMP" || (grep NNN.NNN.NNN.NNN "\$HOST_FILE" >/dev/null && chmod +w "\$HOST_FILE"; mv -f "\$HOST_TMP" "\$HOST_FILE")
+fi
+
 include=-I.build/jniLibs/include
 libs=-L.build/jniLibs/armeabi-v7a
 
