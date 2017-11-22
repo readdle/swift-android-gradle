@@ -3,7 +3,7 @@ apply plugin: 'maven'
 apply plugin: 'idea'
 
 group = 'net.zhuoweizhang'
-version = '1.0.3'
+version = '1.0.4'
 
 task createScripts(type: Exec) {
     executable './src/main/scripts/create_scripts.sh'

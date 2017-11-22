@@ -13,21 +13,19 @@ import org.gradle.api.tasks.*
 class SwiftAndroidPlugin implements Plugin<Project> {
     @Override
     void apply(Project project) {
-        def extension = project.extensions.create('swift', SwiftAndroidPluginExtension)
+        def extension = project.extensions.create('swift', SwiftAndroidPluginExtension, project)
 
         Task generateSwift = createGenerateSwiftTask(project)
-
-        Task swiftBuildChainDebug = createSwiftBuildChain(project, true)
-        Task swiftBuildChainRelease = createSwiftBuildChain(project, false)
-
         Task swiftClean = createCleanTask(project)
-        createSwiftInstallTask(project, true)
-        createSwiftInstallTask(project, false)
         createSwiftUpdateTask(project)
 
         project.afterEvaluate {
             // according to Protobuf gradle plugin, the Android variants are only available here
-            // TODO: read those variants; we only support debug right now
+            Task swiftBuildChainDebug = createSwiftBuildChain(project, true)
+            Task swiftBuildChainRelease = createSwiftBuildChain(project, false)
+
+            createSwiftInstallTask(project, true)
+            createSwiftInstallTask(project, false)
 
             Task compileDebugNdk = project.tasks.getByName("compileDebugNdk")
             compileDebugNdk.dependsOn(swiftBuildChainDebug)
@@ -114,11 +112,16 @@ class SwiftAndroidPlugin implements Plugin<Project> {
 
     private static Task createSwiftInstallTask(Project project, boolean debug) {
         String name = debug ? "swiftInstallDebug" :  "swiftInstallRelease"
-        String configuration = debug ? "debug" : "release"
+
+        def extension = project.extensions.getByType(SwiftAndroidPluginExtension)
+
+        def configurationArgs = ["--configuration", debug ? "debug" : "release"]
+        def extraArgs = debug ? extension.debug.extraInstallFlags : extension.release.extraInstallFlags
 
         Task swiftInstall = project.task(type: Exec, name) {
-            commandLine(getScriptRoot() + "invoke-external-build.sh", "--configuration", configuration)
             workingDir("src/main/swift")
+            executable(getScriptRoot() + "invoke-external-build.sh")
+            args(configurationArgs + extraArgs)
         }
 
         if (debug) {
@@ -130,11 +133,16 @@ class SwiftAndroidPlugin implements Plugin<Project> {
 
     private static Task createSwiftBuildTask(Project project, boolean debug) {
         String name = debug ? "swiftBuildDebug" :  "swiftBuildRelease"
-        String configuration = debug ? "debug" : "release"
+
+        def extension = project.extensions.getByType(SwiftAndroidPluginExtension)
+
+        def configurationArgs = ["--configuration", debug ? "debug" : "release"]
+        def extraArgs = debug ? extension.debug.extraBuildFlags : extension.release.extraBuildFlags
 
         Task swiftBuild = project.task(type: Exec, name) {
-            commandLine(getScriptRoot() + "swift-build.sh", "--configuration", configuration)
             workingDir("src/main/swift")
+            executable(getScriptRoot() + "swift-build.sh")
+            args(configurationArgs + extraArgs)
         }
 
         if (debug) {
