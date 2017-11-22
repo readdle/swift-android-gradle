@@ -1,14 +1,12 @@
 #!/usr/bin/env python
 
-from utils import *
 from os import getenv
 
-import os
-import sys
-
 import collect_dependencies
+from utils import *
 
 SWIFT_INSTALL = getenv("SWIFT_INSTALL")
+
 
 def make_env():
     swift_lib = os.path.join(SWIFT_INSTALL, "usr", "lib", "swift")
@@ -29,11 +27,14 @@ def make_env():
         "SWIFT_PM_BUILD_DIR": pm_build_dir
     }
 
+
 def get_script_path(base):
     return os.path.join(base, "build-android-swift", "invoke-external-build")
 
+
 def is_executable(path):
     return os.path.isfile(path) and os.access(path, os.X_OK)
+
 
 def invoke_external(path):
     script = get_script_path(path)
@@ -41,12 +42,29 @@ def invoke_external(path):
     if not is_executable(script):
         return
 
-    sh_checked([script] + sys.argv[1:], env = make_env())
-        
+    sh_checked([script], env=make_env())
+
 
 def run():
     collect_dependencies.run()
-    traverse_dependencies(invoke_external, include_root = True)
+    traverse_dependencies(invoke_external, include_root=True)
+
 
 if __name__ == "__main__":
+    from argparse import ArgumentParser
+
+    parser = ArgumentParser()
+
+    parser.add_argument(
+        "-c", "--configuration",
+        default="debug",
+        help="Build with configuration (debug|release) [default: debug]"
+    )
+
+    args = parser.parse_args()
+
+    BuildConfig.setup(
+        configuration=args.configuration
+    )
+
     run()

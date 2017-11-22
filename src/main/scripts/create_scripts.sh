@@ -186,11 +186,8 @@ if [[ "\$*" =~ " -fileno " ]]; then
 fi
 
 # compile using toolchain's swiftc with Android target
-swiftc "\$@" || { 
-    return_code=\$? 
-    echo "*** Error executing: \$0 \$@"
-    exit \$return_code
-}
+swiftc "\$@"
+exit \$?
 SCRIPT
 
 cat <<SCRIPT >copy-libraries.sh &&

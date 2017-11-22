@@ -1,17 +1,17 @@
 #!/usr/bin/env python
 from __future__ import print_function
-from glob import glob
+
 from os import getenv
 from os.path import expanduser
 
 from utils import *
 
-import sys
-
 SWIFT_INSTALL = getenv("SWIFT_INSTALL")
+
 
 def extract_tests_package(package):
     return package["name"] + "PackageTests.xctest"
+
 
 def push(dst, name, skip_push_stdlib, skip_push_external):
     from os.path import join
@@ -27,16 +27,23 @@ def push(dst, name, skip_push_stdlib, skip_push_external):
     adb_push(dst, glob(join(Dirs.build_dir(), "*.so")))
     adb_push(dst, [join(Dirs.build_dir(), name)])
 
+
 def exec_tests(folder, name, args):
     ld_path = "LD_LIBRARY_PATH=" + folder
     test_path = folder + "/" + name
 
     return adb_shell([ld_path, test_path] + args)
 
-def run(skip_build = False, skip_push = False, 
-        skip_push_stdlib = False, skip_push_external = False, 
-        build_args = [], test_args = []):
-    
+
+def run(skip_build=False, skip_push=False,
+        skip_push_stdlib=False, skip_push_external=False,
+        build_args=None, test_args=None):
+
+    if test_args is None:
+        test_args = []
+    if build_args is None:
+        build_args = []
+
     skip_build = skip_build or skip_push
 
     if not skip_build:
@@ -55,6 +62,7 @@ def run(skip_build = False, skip_push = False,
         push(folder, name, skip_push_stdlib, skip_push_external)
 
     return exec_tests(folder, name, test_args)
+
 
 if __name__ == "__main__":
     from argparse import ArgumentParser

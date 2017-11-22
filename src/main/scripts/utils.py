@@ -1,12 +1,10 @@
 from __future__ import print_function
-from glob import glob
-from sets import Set
-from subprocess import Popen
 
-import os
-import sys
-import subprocess
 import json
+import os
+import subprocess
+import sys
+
 
 def memoized(func):
     state = type("State", (object,), {
@@ -15,11 +13,11 @@ def memoized(func):
     })
 
     def wrapper(*args, **kvargs):
-       if not state.called:
-           state.result = func(*args, **kvargs)
-           state.called = True
+        if not state.called:
+            state.result = func(*args, **kvargs)
+            state.called = True
 
-       return state.result
+        return state.result
 
     return wrapper
 
@@ -28,22 +26,28 @@ def check_return_code(code):
     if code != 0:
         sys.exit(code)
 
-def sh_checked(cmd, env = None):
+
+def sh_checked(cmd, env=None):
+    from subprocess import Popen
+
     if isinstance(env, dict):
         env = dict(os.environ, **env)
 
-    process = Popen(cmd, env = env)
+    process = Popen(cmd, env=env)
     code = process.wait()
 
     check_return_code(code)
+
 
 def mkdirs(path):
     if not os.path.exists(path):
         os.makedirs(path)
 
+
 @memoized
 def _resolve_packages():
     sh_checked(['swift', 'package', 'resolve'])
+
 
 @memoized
 def _get_packages_tree():
@@ -55,6 +59,7 @@ def _get_packages_tree():
 
     return json.loads(json_output)
 
+
 @memoized
 def get_package_description():
     _resolve_packages()
@@ -65,8 +70,9 @@ def get_package_description():
 
     return json.loads(json_output)
 
+
 def _traverse(root_node, include_root, func):
-    seen = Set()
+    seen = set()
 
     if not include_root:
         seen.add(root_node["path"])
@@ -84,7 +90,17 @@ def _traverse(root_node, include_root, func):
 
     inner(root_node)
 
+
 class BuildConfig(object):
+    __configuration = "debug"
+
+    @classmethod
+    def setup(cls, configuration):
+        allowed_configurations = ["release", "debug"]
+
+        if configuration in allowed_configurations:
+            cls.__configuration = configuration
+
     @classmethod
     @memoized
     def triple(cls):
@@ -94,6 +110,11 @@ class BuildConfig(object):
     @memoized
     def abi(cls):
         return "armeabi-v7a"
+
+    @classmethod
+    def configuration(cls):
+        return cls.__configuration
+
 
 class Dirs(object):
     @classmethod
@@ -105,7 +126,7 @@ class Dirs(object):
     @classmethod
     @memoized
     def build_dir(cls):
-        return os.path.join(cls.base_dir(), ".build", BuildConfig.triple(), "debug")
+        return os.path.join(cls.base_dir(), ".build", BuildConfig.triple(), BuildConfig.configuration())
 
     @classmethod
     @memoized
@@ -123,10 +144,13 @@ class Dirs(object):
         return os.path.join(cls.external_build_dir(), BuildConfig.abi())
 
 
-def traverse_dependencies(func, include_root = False):
+def traverse_dependencies(func, include_root=False):
     _traverse(_get_packages_tree(), include_root, func)
 
+
 def copytree(src, dst):
+    from glob import glob
+
     src_files = glob(src)
 
     if len(src_files) == 0:
@@ -138,6 +162,7 @@ def copytree(src, dst):
 def adb_push(dst, files):
     for f in files:
         sh_checked(["adb", "push", f, dst])
+
 
 def adb_shell(args):
     return sh_checked(["adb", "shell"] + args)
