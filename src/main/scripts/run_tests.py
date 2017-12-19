@@ -15,6 +15,7 @@ def extract_tests_package(package):
 
 def push(dst, name, skip_push_stdlib, skip_push_external):
     from os.path import join
+    from glob import glob
 
     adb_shell(["mkdir", "-p", dst])
 
