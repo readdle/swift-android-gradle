@@ -1,4 +1,4 @@
-package net.zhuoweizhang.swiftandroid
+package org.swiftjava.gradle.android
 
 import org.gradle.api.Project
 import org.gradle.util.GUtil
