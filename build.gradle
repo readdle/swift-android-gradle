@@ -1,11 +1,68 @@
+buildscript {
+    repositories {
+        jcenter()
+    }
+    dependencies {
+        classpath 'com.jfrog.bintray.gradle:gradle-bintray-plugin:1.8.0'
+    }
+}
+
 apply plugin: 'groovy'
 apply plugin: 'maven'
 apply plugin: 'idea'
+apply plugin: 'maven-publish'
+apply plugin: 'com.jfrog.bintray'
 
 group = 'org.swiftjava'
 version = '1.1.0'
+
+repositories {
+    jcenter()
+}
 
 dependencies {
     compile gradleApi()
     compile localGroovy()
 }
+
+// custom tasks for creating source/javadoc jars
+task sourcesJar(type: Jar) {
+    classifier = 'sources'
+    from sourceSets.main.allSource
+}
+
+publishing {
+    publications {
+        mavenJava(MavenPublication) {
+            from components.java
+            artifact sourcesJar
+        }
+    }
+}
+
+bintray {
+    // define this in ~/.gradle/gradle.properties
+    user = bintray_user
+    key = bintray_api_key
+
+    publish = true
+    publications = ['mavenJava'] //When uploading Maven-based publication files
+
+    pkg {
+        repo = 'gradle-plugin'
+        userOrg = 'swiftjava'
+        name = 'swift-android-gradle'
+
+        desc = 'Gradle plugin for build swift for android with Gradle and Swift Package Manager'
+        websiteUrl = 'https://github.com/SwiftJava'
+        vcsUrl = 'https://github.com/SwiftJava/swift-android-gradle'
+        githubRepo = 'SwiftJava/swift-android-gradle'
+
+        licenses = ['Apache-2.0']
+
+        labels = ['gradle', 'plugin', 'swift', 'android']
+        publicDownloadNumbers = true
+    }
+}
+
+bintrayUpload.dependsOn(build, sourcesJar)
