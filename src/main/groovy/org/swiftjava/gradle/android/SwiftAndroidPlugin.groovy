@@ -17,7 +17,6 @@ class SwiftAndroidPlugin implements Plugin<Project> {
     void apply(Project project) {
         toolchainHandle = new ToolchainHandle(project)
 
-        checkToolchanin()
 
         def extension = project.extensions.create('swift', SwiftAndroidPluginExtension, project)
 
@@ -57,12 +56,20 @@ class SwiftAndroidPlugin implements Plugin<Project> {
         }
     }
 
-    private void checkToolchanin() {
+    private void checkToolchain() {
         if (!toolchainHandle.isToolchainPresent()) {
             throw new GradleException(
-                    "Specified Swift Toolchain location does not exists. " +
-                            "Please ensure swift-android.dir in local.properties file or " +
-                            "SWIFT_ANDROID_HOME is configured correctly."
+                    "Swift Toolchain location not found. Define location with swift-android.dir in the " +
+                    "local.properties file or with an SWIFT_ANDROID_HOME environment variable."
+            )
+        }
+    }
+
+    private void checkNdk() {
+        if (!toolchainHandle.isNdkPresent()) {
+            throw new GradleException(
+                    "NDK location not found. Define location with ndk.dir in the " +
+                    "local.properties file or with an ANDROID_NDK_HOME environment variable."
             )
         }
     }
@@ -76,6 +83,7 @@ class SwiftAndroidPlugin implements Plugin<Project> {
             args "tools", "--install", version
 
             doFirst {
+                checkToolchain()
                 println "Installing Swift Build Tools v${version}"
             }
 
@@ -139,6 +147,7 @@ class SwiftAndroidPlugin implements Plugin<Project> {
             workingDir "src/main/swift"
             executable toolchainHandle.swiftInstallPath
             args configurationArgs + extraArgs
+            environment toolchainHandle.swiftEnv
         }
 
         if (debug) {
@@ -160,6 +169,11 @@ class SwiftAndroidPlugin implements Plugin<Project> {
             workingDir "src/main/swift"
             executable toolchainHandle.swiftBuildPath
             args configurationArgs + extraArgs
+            environment toolchainHandle.fullEnv
+
+            doFirst {
+                checkNdk()
+            }
         }
 
         if (debug) {

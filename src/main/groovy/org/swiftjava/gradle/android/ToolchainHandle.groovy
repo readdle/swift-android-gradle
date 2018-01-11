@@ -7,26 +7,37 @@ class ToolchainHandle {
     public static final String TOOLS_VERSION = "1.0"
 
     final File toolchainFolder
+    final File ndkFolder
 
     ToolchainHandle(Project project) {
         def properties = loadProperties(project)
-        toolchainFolder = findToolchain(project, properties)
+        toolchainFolder = findToolchain(properties)
+        ndkFolder = findNdkLocation(properties)
+    }
+
+    private String getPathInSwiftHome(String path) {
+        // Dummy cast for groovy late dispatch
+        return new File((File) toolchainFolder, path).absolutePath
     }
 
     private String getTool(String name) {
-        return new File(toolchainFolder, "build-tools/${TOOLS_VERSION}/${name}").absolutePath
+        return getPathInSwiftHome("build-tools/${TOOLS_VERSION}/${name}")
     }
 
     private String getFolderInToolchain(String path) {
-        return new File(toolchainFolder, "toolchain/${path}").absolutePath
+        return getPathInSwiftHome("toolchain/${path}")
     }
 
     boolean isToolchainPresent() {
         return toolchainFolder != null && toolchainFolder.isDirectory()
     }
 
+    boolean isNdkPresent() {
+        return ndkFolder != null && ndkFolder.isDirectory()
+    }
+
     String getToolsManagerPath() {
-        return new File(toolchainFolder, "bin/swift-android").absolutePath
+        return getPathInSwiftHome("bin/swift-android")
     }
 
     String getSwiftBuildPath() {
@@ -39,6 +50,19 @@ class ToolchainHandle {
 
     String getSwiftLibFolder() {
         return getFolderInToolchain("usr/lib/swift/android/")
+    }
+
+    Map<String, String> getSwiftEnv() {
+        return [
+                SWIFT_ANDROID_HOME: toolchainFolder?.absolutePath,
+        ]
+    }
+
+    Map<String, String> getFullEnv() {
+        return [
+                SWIFT_ANDROID_HOME: toolchainFolder?.absolutePath,
+                ANDROID_NDK_HOME: ndkFolder?.absolutePath
+        ]
     }
 
     private static Properties loadProperties(Project project) {
@@ -59,13 +83,27 @@ class ToolchainHandle {
         return properties
     }
 
-    private static File findToolchain(Project project, Properties properties) {
+    private static File findToolchain(Properties properties) {
         String property = properties.getProperty("swift-android.dir")
         if (property != null) {
             return new File(property)
         }
 
         String envVar = System.getenv("SWIFT_ANDROID_HOME")
+        if (envVar != null) {
+            return new File(envVar)
+        }
+
+        return null
+    }
+
+    private static File findNdkLocation(Properties properties) {
+        String ndkDirProp = properties.getProperty("ndk.dir");
+        if (ndkDirProp != null) {
+            return new File(ndkDirProp)
+        }
+
+        String envVar = System.getenv("ANDROID_NDK_HOME")
         if (envVar != null) {
             return new File(envVar)
         }
