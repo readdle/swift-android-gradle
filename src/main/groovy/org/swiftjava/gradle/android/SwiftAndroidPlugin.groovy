@@ -17,13 +17,11 @@ class SwiftAndroidPlugin implements Plugin<Project> {
     void apply(Project project) {
         toolchainHandle = new ToolchainHandle(project)
 
-
         def extension = project.extensions.create('swift', SwiftAndroidPluginExtension, project)
 
         project.afterEvaluate {
             Task installTools = createInstallSwiftToolsTask(project)
 
-            Task generateSwift = createGenerateSwiftTask(project)
             Task swiftClean = createCleanTask(project, extension.usePackageClean)
             createSwiftUpdateTask(project)
 
@@ -45,9 +43,6 @@ class SwiftAndroidPlugin implements Plugin<Project> {
 
             Task compileReleaseNdk = project.tasks.getByName("compileReleaseNdk")
             compileReleaseNdk.dependsOn(swiftBuildChainRelease)
-
-            Task preBuildTask = project.tasks.getByName("preBuild")
-            preBuildTask.dependsOn(generateSwift)
 
             if (extension.cleanEnabled) {
                 Task cleanTask = project.tasks.getByName("clean")
@@ -129,10 +124,6 @@ class SwiftAndroidPlugin implements Plugin<Project> {
             workingDir "src/main/swift"
             commandLine "swift", "package", "update"
         }
-    }
-
-    private static Task createGenerateSwiftTask(Project project) {
-        return project.task("generateSwift")
     }
 
     private Task createSwiftInstallTask(Project project, boolean debug) {
