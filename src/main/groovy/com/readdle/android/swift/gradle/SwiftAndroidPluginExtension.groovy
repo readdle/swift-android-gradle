@@ -1,4 +1,4 @@
-package org.swiftjava.gradle.android
+package com.readdle.android.swift.gradle
 
 import org.gradle.api.Project
 import org.gradle.util.GUtil

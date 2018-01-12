@@ -5,7 +5,7 @@
 // installed when the plugin is installed by "create_scripts.sh"
 //
 
-package org.swiftjava.gradle.android
+package com.readdle.android.swift.gradle
 
 import org.gradle.api.*
 import org.gradle.api.tasks.*

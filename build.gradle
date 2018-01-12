@@ -13,7 +13,7 @@ apply plugin: 'idea'
 apply plugin: 'maven-publish'
 apply plugin: 'com.jfrog.bintray'
 
-group = 'org.swiftjava'
+group = 'com.readdle.android.swift'
 version = '1.1.0'
 
 repositories {
@@ -49,14 +49,13 @@ bintray {
     publications = ['mavenJava'] //When uploading Maven-based publication files
 
     pkg {
-        repo = 'gradle-plugin'
-        userOrg = 'swiftjava'
+        repo = 'maven'
+        userOrg = 'readdle'
         name = 'swift-android-gradle'
 
         desc = 'Gradle plugin for build swift for android with Gradle and Swift Package Manager'
-        websiteUrl = 'https://github.com/SwiftJava'
-        vcsUrl = 'https://github.com/SwiftJava/swift-android-gradle'
-        githubRepo = 'SwiftJava/swift-android-gradle'
+        vcsUrl = 'https://github.com/readdle/swift-android-gradle'
+        githubRepo = 'readdle/swift-android-gradle'
 
         licenses = ['Apache-2.0']
 
