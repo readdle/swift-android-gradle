@@ -164,6 +164,9 @@ class SwiftAndroidPlugin implements Plugin<Project> {
 
             doFirst {
                 checkNdk()
+
+                def args = (configurationArgs + extraArgs).join(" ")
+                println("Swift PM flags: ${args}")
             }
         }
 
