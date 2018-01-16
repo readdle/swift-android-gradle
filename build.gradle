@@ -34,6 +34,8 @@ task sourcesJar(type: Jar) {
 publishing {
     publications {
         mavenJava(MavenPublication) {
+            artifactId 'gradle'
+
             from components.java
             artifact sourcesJar
         }
