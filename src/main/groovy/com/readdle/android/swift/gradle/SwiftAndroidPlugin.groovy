@@ -203,7 +203,11 @@ class SwiftAndroidPlugin implements Plugin<Project> {
         def swiftBuildDir = new File(project.projectDir, "src/main/swift/.build")
         def link = new File(swiftBuildDir, "generated").toPath()
 
+        def annotationProcessorTask = project.tasks.getByName("compile${variantName}JavaWithJavac")
+
         return project.task("swiftLinkGeneratedSources${variantName}") {
+            dependsOn(annotationProcessorTask)
+
             doLast {
                 swiftBuildDir.mkdirs()
                 Files.deleteIfExists(link)
