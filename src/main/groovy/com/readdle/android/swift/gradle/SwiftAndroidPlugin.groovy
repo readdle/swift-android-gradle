@@ -7,8 +7,15 @@
 
 package com.readdle.android.swift.gradle
 
-import org.gradle.api.*
-import org.gradle.api.tasks.*
+import org.gradle.api.GradleException
+import org.gradle.api.Plugin
+import org.gradle.api.Project
+import org.gradle.api.Task
+import org.gradle.api.tasks.Copy
+import org.gradle.api.tasks.Delete
+import org.gradle.api.tasks.Exec
+
+import java.nio.file.Files
 
 class SwiftAndroidPlugin implements Plugin<Project> {
     ToolchainHandle toolchainHandle
@@ -22,33 +29,42 @@ class SwiftAndroidPlugin implements Plugin<Project> {
         project.afterEvaluate {
             Task installTools = createInstallSwiftToolsTask(project)
 
-            Task swiftClean = createCleanTask(project, extension.usePackageClean)
             createSwiftUpdateTask(project)
 
-            Task swiftBuildChainDebug = createSwiftBuildChain(project, true)
-            Task swiftBuildChainRelease = createSwiftBuildChain(project, false)
-
-            Task swiftInstallDebug = createSwiftInstallTask(project, true)
-            Task swiftInstallRelease = createSwiftInstallTask(project, false)
-
-            // Tasks using build tools
-            swiftBuildChainDebug.dependsOn(installTools)
-            swiftBuildChainRelease.dependsOn(installTools)
-            swiftInstallDebug.dependsOn(installTools)
-            swiftInstallRelease.dependsOn(installTools)
-
-
-            Task compileDebugNdk = project.tasks.getByName("compileDebugNdk")
-            compileDebugNdk.dependsOn(swiftBuildChainDebug)
-
-            Task compileReleaseNdk = project.tasks.getByName("compileReleaseNdk")
-            compileReleaseNdk.dependsOn(swiftBuildChainRelease)
-
+            Task swiftClean = createCleanTask(project, extension.usePackageClean)
             if (extension.cleanEnabled) {
                 Task cleanTask = project.tasks.getByName("clean")
                 cleanTask.dependsOn(swiftClean)
             }
+
+            project.android.applicationVariants.all { variant ->
+                handleVariant(project, variant, installTools)
+            }
         }
+    }
+
+    private void handleVariant(Project project, def variant, Task installTools) {
+        boolean isDebug = variant.buildType.isDebuggable()
+
+        Task swiftInstall = createSwiftInstallTask(project, variant, isDebug)
+
+        // Swift build chain
+        Task swiftLinkGenerated = createLinkGeneratedSourcesTask(project, variant)
+        Task swiftBuild = createSwiftBuildTask(project, variant, isDebug)
+        Task copySwift = createCopyTask(project, variant, isDebug)
+
+        swiftBuild.dependsOn(swiftLinkGenerated)
+        copySwift.dependsOn(swiftBuild)
+
+        // Tasks using build tools
+        swiftInstall.dependsOn(installTools)
+        swiftBuild.dependsOn(installTools)
+        copySwift.dependsOn(installTools)
+
+        def variantName = variant.name.capitalize()
+
+        Task compileDebugNdk = project.tasks.getByName("compile${variantName}Ndk")
+        compileDebugNdk.dependsOn(copySwift)
     }
 
     private void checkToolchain() {
@@ -88,15 +104,6 @@ class SwiftAndroidPlugin implements Plugin<Project> {
         }
     }
 
-    private Task createSwiftBuildChain(Project project, boolean debug) {
-        Task swiftBuild = createSwiftBuildTask(project, debug)
-        Task copySwift = createCopyTask(project, debug)
-
-        copySwift.dependsOn(swiftBuild)
-
-        return copySwift
-    }
-
     private static Task createCleanTask(Project project, boolean usePackageClean) {
         Task forceClean = project.task(type: Delete, "swiftForceClean") {
             // I don't trust Swift Package Manager's --clean
@@ -126,37 +133,33 @@ class SwiftAndroidPlugin implements Plugin<Project> {
         }
     }
 
-    private Task createSwiftInstallTask(Project project, boolean debug) {
-        String name = debug ? "swiftInstallDebug" :  "swiftInstallRelease"
+    private Task createSwiftInstallTask(Project project, def variant, boolean debug) {
+        def variantName = variant.name.capitalize()
 
         def extension = project.extensions.getByType(SwiftAndroidPluginExtension)
 
         def configurationArgs = ["--configuration", debug ? "debug" : "release"]
         def extraArgs = debug ? extension.debug.extraInstallFlags : extension.release.extraInstallFlags
 
-        Task swiftInstall = project.task(type: Exec, name) {
+        Task swiftInstall = project.task(type: Exec, "swiftInstall${variantName}") {
             workingDir "src/main/swift"
             executable toolchainHandle.swiftInstallPath
             args configurationArgs + extraArgs
             environment toolchainHandle.swiftEnv
         }
 
-        if (debug) {
-            addCompatibilityAlias(project, swiftInstall, "swiftInstall")
-        }
-
         return swiftInstall
     }
 
-    private Task createSwiftBuildTask(Project project, boolean debug) {
-        String name = debug ? "swiftBuildDebug" :  "swiftBuildRelease"
+    private Task createSwiftBuildTask(Project project, def variant, boolean debug) {
+        def variantName = variant.name.capitalize()
 
         def extension = project.extensions.getByType(SwiftAndroidPluginExtension)
 
         def configurationArgs = ["--configuration", debug ? "debug" : "release"]
         def extraArgs = debug ? extension.debug.extraBuildFlags : extension.release.extraBuildFlags
 
-        Task swiftBuild = project.task(type: Exec, name) {
+        Task swiftBuild = project.task(type: Exec, "swiftBuild${variantName}") {
             workingDir "src/main/swift"
             executable toolchainHandle.swiftBuildPath
             args configurationArgs + extraArgs
@@ -170,21 +173,16 @@ class SwiftAndroidPlugin implements Plugin<Project> {
             }
         }
 
-        if (debug) {
-            addCompatibilityAlias(project, swiftBuild, "swiftBuild")
-            addCompatibilityAlias(project, swiftBuild, "compileSwift")
-        }
-
         return swiftBuild
     }
 
-    private Task createCopyTask(Project project, boolean debug) {
-        String name = debug ? "copySwiftDebug" :  "copySwiftRelease"
+    private Task createCopyTask(Project project, def variant, boolean debug) {
+        def variantName = variant.name.capitalize()
 
         String swiftPmBuildPath = debug ?
                 "src/main/swift/.build/debug" : "src/main/swift/.build/release"
 
-        return project.task(type: Copy, name) {
+        return project.task(type: Copy, "copySwift${variantName}") {
             from toolchainHandle.swiftLibFolder
             from "src/main/swift/.build/jniLibs/armeabi-v7a"
             from swiftPmBuildPath
@@ -194,6 +192,26 @@ class SwiftAndroidPlugin implements Plugin<Project> {
             into "src/main/jniLibs/armeabi-v7a"
             
             fileMode 0644
+        }
+    }
+
+    private static Task createLinkGeneratedSourcesTask(Project project, def variant) {
+        def variantName = variant.name.capitalize()
+        def variantDir = variant.dirName
+
+        def target = new File(project.buildDir, "generated/source/apt/${variantDir}/SwiftGenerated").toPath()
+        def swiftBuildDir = new File(project.projectDir, "src/main/swift/.build")
+        def link = new File(swiftBuildDir, "generated").toPath()
+
+        return project.task("swiftLinkGeneratedSources${variantName}") {
+            doLast {
+                swiftBuildDir.mkdirs()
+                Files.deleteIfExists(link)
+                Files.createSymbolicLink(
+                        link,
+                        link.getParent().relativize(target)
+                )
+            }
         }
     }
 
