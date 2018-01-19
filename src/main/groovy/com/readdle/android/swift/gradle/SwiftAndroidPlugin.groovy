@@ -1,10 +1,3 @@
-
-//
-// Injects Swift relevant tasks into gradle build process
-// Mostly these are performed by scripts in ~/.gradle/scripts
-// installed when the plugin is installed by "create_scripts.sh"
-//
-
 package com.readdle.android.swift.gradle
 
 import org.gradle.api.GradleException
@@ -115,14 +108,9 @@ class SwiftAndroidPlugin implements Plugin<Project> {
             commandLine "swift", "package", "clean"
         }
 
-        Task metaTask = project.task("swiftClean")
-
-        Task impl = usePackageClean ?
-                    forceClean : packageClean
-
-        metaTask.dependsOn(impl)
-
-        return metaTask
+        return project.task("swiftClean") {
+            dependsOn(usePackageClean ? forceClean : packageClean)
+        }
     }
 
     // TODO: integrate with android gradle pipeline
@@ -141,14 +129,12 @@ class SwiftAndroidPlugin implements Plugin<Project> {
         def configurationArgs = ["--configuration", debug ? "debug" : "release"]
         def extraArgs = debug ? extension.debug.extraInstallFlags : extension.release.extraInstallFlags
 
-        Task swiftInstall = project.task(type: Exec, "swiftInstall${variantName}") {
+        return project.task(type: Exec, "swiftInstall${variantName}") {
             workingDir "src/main/swift"
             executable toolchainHandle.swiftInstallPath
             args configurationArgs + extraArgs
             environment toolchainHandle.swiftEnv
         }
-
-        return swiftInstall
     }
 
     private Task createSwiftBuildTask(Project project, def variant, boolean debug) {
@@ -159,7 +145,7 @@ class SwiftAndroidPlugin implements Plugin<Project> {
         def configurationArgs = ["--configuration", debug ? "debug" : "release"]
         def extraArgs = debug ? extension.debug.extraBuildFlags : extension.release.extraBuildFlags
 
-        Task swiftBuild = project.task(type: Exec, "swiftBuild${variantName}") {
+        return project.task(type: Exec, "swiftBuild${variantName}") {
             workingDir "src/main/swift"
             executable toolchainHandle.swiftBuildPath
             args configurationArgs + extraArgs
@@ -172,8 +158,6 @@ class SwiftAndroidPlugin implements Plugin<Project> {
                 println("Swift PM flags: ${args}")
             }
         }
-
-        return swiftBuild
     }
 
     private Task createCopyTask(Project project, def variant, boolean debug) {
@@ -219,6 +203,7 @@ class SwiftAndroidPlugin implements Plugin<Project> {
         }
     }
 
+    @SuppressWarnings("GroovyUnusedDeclaration")
     private static Task addCompatibilityAlias(Project project, Task task, String alias) {
         String originalName = task.name
 
