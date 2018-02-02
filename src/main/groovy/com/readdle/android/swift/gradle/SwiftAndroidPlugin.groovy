@@ -167,11 +167,15 @@ class SwiftAndroidPlugin implements Plugin<Project> {
                 "src/main/swift/.build/debug" : "src/main/swift/.build/release"
 
         return project.task(type: Copy, "copySwift${variantName}") {
-            from toolchainHandle.swiftLibFolder
-            from "src/main/swift/.build/jniLibs/armeabi-v7a"
-            from swiftPmBuildPath
-
-            include "*.so"
+            from("src/main/swift/.build/jniLibs/armeabi-v7a") {
+                include "*.so"
+            }
+            from(toolchainHandle.swiftLibFolder) {
+                include "*.so"
+            }
+            from(swiftPmBuildPath) {
+                include "*.so"
+            }
 
             into "src/main/jniLibs/armeabi-v7a"
             
