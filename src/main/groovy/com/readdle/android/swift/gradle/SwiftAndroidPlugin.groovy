@@ -19,6 +19,8 @@ class SwiftAndroidPlugin implements Plugin<Project> {
 
         def extension = project.extensions.create('swift', SwiftAndroidPluginExtension, project)
 
+        configurePropertiesTask(project)
+
         project.afterEvaluate {
             Task installTools = createInstallSwiftToolsTask(project)
 
@@ -32,6 +34,14 @@ class SwiftAndroidPlugin implements Plugin<Project> {
 
             project.android.applicationVariants.all { variant ->
                 handleVariant(project, variant, installTools)
+            }
+        }
+    }
+
+    private void configurePropertiesTask(Project project) {
+        project.task("swiftUpdateLocalProperties") {
+            doLast {
+                toolchainHandle.updateProperties(project)
             }
         }
     }

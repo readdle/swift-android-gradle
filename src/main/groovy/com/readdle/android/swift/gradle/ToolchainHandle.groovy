@@ -1,10 +1,15 @@
 package com.readdle.android.swift.gradle
 
+import org.apache.commons.configuration.PropertiesConfiguration
+import org.apache.commons.configuration.PropertiesConfigurationLayout
+import org.gradle.api.GradleException
 import org.gradle.api.Project
 
 class ToolchainHandle {
     public static final String FN_LOCAL_PROPERTIES = "local.properties"
     public static final String TOOLS_VERSION = "1.0"
+    public static final String SWIFT_ANDROID_HOME_KEY = "swift-android.dir"
+    public static final String ANDROID_NDK_HOME_KEY = "ndk.dir"
 
     final File toolchainFolder
     final File ndkFolder
@@ -76,15 +81,53 @@ class ToolchainHandle {
                     properties.load(it)
                 }
             } catch (IOException e) {
-                throw new RuntimeException("Unable to read ${localProperties.absolutePath}", e)
+                throw new GradleException("Unable to read ${localProperties.absolutePath}", e)
             }
         }
 
         return properties
     }
 
+    void updateProperties(Project project) {
+        def toolchainPath = System.getenv("SWIFT_ANDROID_HOME")
+        def ndkPath = System.getenv("ANDROID_NDK_HOME")
+
+        if (toolchainPath == null && toolchainFolder == null) {
+            throw new GradleException("SWIFT_ANDROID_HOME environment variable not defined")
+        }
+
+        if (ndkPath == null && ndkFolder == null) {
+            throw new GradleException("ANDROID_NDK_HOME environment variable not defined")
+        }
+
+        File rootDir = project.getRootDir()
+        File localProperties = new File(rootDir, FN_LOCAL_PROPERTIES)
+
+        PropertiesConfiguration config = new PropertiesConfiguration()
+        PropertiesConfigurationLayout layout = new PropertiesConfigurationLayout(config)
+
+        try {
+            localProperties.withInputStream {
+                layout.load(new InputStreamReader(it))
+            }
+        } catch (IOException e) {
+            throw new GradleException("Unable to read ${localProperties.absolutePath}", e)
+        }
+
+        config.setProperty(ANDROID_NDK_HOME_KEY, ndkPath)
+        config.setProperty(SWIFT_ANDROID_HOME_KEY, toolchainPath)
+
+        try {
+            localProperties.withOutputStream {
+                layout.save(new OutputStreamWriter(it))
+            }
+        } catch (IOException e) {
+            throw new GradleException("Unable to write to ${localProperties.absolutePath}", e)
+        }
+    }
+
     private static File findToolchain(Properties properties) {
-        String property = properties.getProperty("swift-android.dir")
+        String property = properties.getProperty(SWIFT_ANDROID_HOME_KEY)
         if (property != null) {
             return new File(property)
         }
@@ -98,7 +141,7 @@ class ToolchainHandle {
     }
 
     private static File findNdkLocation(Properties properties) {
-        String ndkDirProp = properties.getProperty("ndk.dir");
+        String ndkDirProp = properties.getProperty(ANDROID_NDK_HOME_KEY)
         if (ndkDirProp != null) {
             return new File(ndkDirProp)
         }
