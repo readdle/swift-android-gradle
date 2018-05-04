@@ -54,10 +54,9 @@ class SwiftAndroidPlugin implements Plugin<Project> {
         // Swift build chain
         Task swiftLinkGenerated = createLinkGeneratedSourcesTask(project, variant)
         Task swiftBuild = createSwiftBuildTask(project, variant, isDebug)
-        Task copySwift = createCopyTask(project, variant, isDebug)
+        Task copySwift = createCopyTask(project, swiftBuild, variant, isDebug)
 
         swiftBuild.dependsOn(swiftLinkGenerated)
-        copySwift.dependsOn(swiftBuild)
 
         // Tasks using build tools
         swiftInstall.dependsOn(installTools)
@@ -154,32 +153,42 @@ class SwiftAndroidPlugin implements Plugin<Project> {
 
         def configurationArgs = ["--configuration", debug ? "debug" : "release"]
         def extraArgs = debug ? extension.debug.extraBuildFlags : extension.release.extraBuildFlags
+        def arguments = configurationArgs + extraArgs
+
+        def sources = project.fileTree("src/main/swift") {
+            include "**/*.c"
+            include "**/*.h"
+            include "**/*.cpp"
+            include "**/*.swift"
+        }
 
         return project.task(type: Exec, "swiftBuild${variantName}") {
             workingDir "src/main/swift"
             executable toolchainHandle.swiftBuildPath
-            args configurationArgs + extraArgs
+            args arguments
             environment toolchainHandle.fullEnv
+
+            inputs.property("args", arguments)
+            inputs.files(sources).skipWhenEmpty()
+            outputs.dir("src/main/swift/.build/jniLibs/armeabi-v7a")
 
             doFirst {
                 checkNdk()
 
-                def args = (configurationArgs + extraArgs).join(" ")
+                def args = arguments.join(" ")
                 println("Swift PM flags: ${args}")
             }
         }
     }
 
-    private Task createCopyTask(Project project, def variant, boolean debug) {
+    private Task createCopyTask(Project project, Task swiftBuildTask, def variant, boolean debug) {
         def variantName = variant.name.capitalize()
 
         String swiftPmBuildPath = debug ?
                 "src/main/swift/.build/debug" : "src/main/swift/.build/release"
 
         return project.task(type: Copy, "copySwift${variantName}") {
-            from("src/main/swift/.build/jniLibs/armeabi-v7a") {
-                include "*.so"
-            }
+            from swiftBuildTask
             from(toolchainHandle.swiftLibFolder) {
                 include "*.so"
             }
