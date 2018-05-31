@@ -1,27 +1,66 @@
 
-#### This version of the Gradle plugin is obsolete. It is now a part of the  [Android Toolchain](https://github.com/SwiftJava/android_toolchain)
+# This plugin integrates [Swift Android Toolchain](https://github.com/readdle/swift-android-toolchain) to Gradle
 
-Gradle plugin for building Swift for Android using the Swift Package Manager.
+## Pre-requirements
 
-Very early proof of concept; only works for Debug targets, and is pretty awful. (Your help is appreciated!)
+This plugin require [Android NDK r15c](https://dl.google.com/android/repository/android-ndk-r15c-darwin-x86_64.zip) and [Swift Android Toolchain](https://bintray.com/readdle/swift-android-toolchain/swift-android-toolchain/_latestVersion)
 
-Licensed under Apache License version 2.0.
+Plugin lookup NDK and toolchain by environment variables `ANDROID_NDK_HOME` and `SWIFT_ANDROID_HOME` or `local.properties` in project root
+
+    ndk.dir=/path/to/ndk
+    swift-android.dir=/path/to/toolchain
 
 ## Setup
 
-You'll need the latest version of the SwiftAndroid toolchain (old versions
-do not have the Swift Package Manager)
+Add the following to your root build.gradle
 
-You need to add swift to the PATH:
+```gradle
+buildscript {
+    repositories {
+        jcenter()
+    }
+    dependencies {
+        classpath 'com.readdle.android.swift:gradle:1.1.5'
+    }
+}
+```
 
-`export PATH=$PATH:/path/to/swift/bin`
+Add the following to your project build.gradle
 
-Then run in the source folder
+```gradle
+apply plugin: 'com.readdle.android.swift'
+```
 
-`./gradlew install`
+Optionally you can add some extra configuration to your project build.gradle. For example:
 
-to install the addon.
+```gradle
+// Ti
+swift {
+    // helpers to forward flags from Swift Package Manager to Swift Compiler Frontend
+    def passToFrontend = ["-Xswiftc", "-Xfrontend", "-Xswiftc"]
+    def disableObjcAttr = passToFrontend + "-experimental-disable-objc-attr"
+    
+    // Enables swift clean when ./gradlew clean invoked. Default true
+    cleanEnabled false 
+    
+    // Custom swift flags for debug build
+    debug {
+        // Set custom preprocessor flags
+        extraBuildFlags "-Xswiftc", "-DDEBUG"
+        // Disable @objc and dynamic
+        extraBuildFlags disableObjcAttr
+    }
+    
+    // Custom swift flags for release build
+    release {
+        // enable symbols in relase mode
+        extraBuildFlags "-Xswiftc", "-g"
+        // Disable @objc and dynamic
+        extraBuildFlags disableObjcAttr
+    }
+}
+```
 
-## Usage
+## Sample
 
-See [sample programs](https://github.com/SwiftAndroid/swift-android-samples).
+See [sample android app](https://github.com/readdle/swift-android-architecture).
