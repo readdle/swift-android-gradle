@@ -9,6 +9,7 @@ import org.gradle.api.tasks.Delete
 import org.gradle.api.tasks.Exec
 
 import java.nio.file.Files
+import java.nio.file.Path
 
 class SwiftAndroidPlugin implements Plugin<Project> {
     ToolchainHandle toolchainHandle
@@ -206,7 +207,8 @@ class SwiftAndroidPlugin implements Plugin<Project> {
         def variantName = variant.name.capitalize()
         def variantDir = variant.dirName
 
-        def target = new File(project.buildDir, "generated/source/apt/${variantDir}/SwiftGenerated").toPath()
+        def target = generatedSourcesPath(project, variantDir)
+
         def swiftBuildDir = new File(project.projectDir, "src/main/swift/.build")
         def link = new File(swiftBuildDir, "generated").toPath()
 
@@ -223,6 +225,16 @@ class SwiftAndroidPlugin implements Plugin<Project> {
                         link.getParent().relativize(target)
                 )
             }
+        }
+    }
+
+    private static Path generatedSourcesPath(Project project, variantDir) {
+        def extension = project.extensions.getByType(SwiftAndroidPluginExtension)
+
+        if (extension.useKapt) {
+            return new File(project.buildDir, "generated/source/kapt/${variantDir}/SwiftGenerated").toPath()
+        } else {
+            return new File(project.buildDir, "generated/source/apt/${variantDir}/SwiftGenerated").toPath()
         }
     }
 

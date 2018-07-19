@@ -86,11 +86,11 @@ class SwiftAndroidPluginExtension {
 
     boolean cleanEnabled = true
     boolean usePackageClean = true
+    boolean useKapt = false
 
     SwiftAndroidPluginExtension(Project project) {
         this.project = project
     }
-
 
     SwiftFlags debug(Closure closure) {
         debug = new SwiftFlags()
