@@ -119,7 +119,7 @@ class SwiftAndroidPlugin implements Plugin<Project> {
         }
 
         return project.task("swiftClean") {
-            dependsOn(usePackageClean ? forceClean : packageClean)
+            dependsOn(usePackageClean ? packageClean : forceClean)
         }
     }
 
@@ -163,6 +163,13 @@ class SwiftAndroidPlugin implements Plugin<Project> {
             include "**/*.swift"
         }
 
+        String swiftPmBuildPath = debug ?
+                "src/main/swift/.build/debug" : "src/main/swift/.build/release"
+
+        def outputLibraries = project.fileTree(swiftPmBuildPath) {
+            include "*.so"
+        }
+
         return project.task(type: Exec, "swiftBuild${variantName}") {
             workingDir "src/main/swift"
             executable toolchainHandle.swiftBuildPath
@@ -171,7 +178,7 @@ class SwiftAndroidPlugin implements Plugin<Project> {
 
             inputs.property("args", arguments)
             inputs.files(sources).skipWhenEmpty()
-            outputs.dir("src/main/swift/.build/jniLibs/armeabi-v7a")
+            outputs.files(outputLibraries)
 
             doFirst {
                 checkNdk()
@@ -185,17 +192,14 @@ class SwiftAndroidPlugin implements Plugin<Project> {
     private Task createCopyTask(Project project, Task swiftBuildTask, def variant, boolean debug) {
         def variantName = variant.name.capitalize()
 
-        String swiftPmBuildPath = debug ?
-                "src/main/swift/.build/debug" : "src/main/swift/.build/release"
-
         return project.task(type: Copy, "copySwift${variantName}") {
-            from swiftBuildTask
+            from("src/main/swift/.build/jniLibs/armeabi-v7a") {
+                include "*.so"
+            }
             from(toolchainHandle.swiftLibFolder) {
                 include "*.so"
             }
-            from(swiftPmBuildPath) {
-                include "*.so"
-            }
+            from(swiftBuildTask)
 
             into "src/main/jniLibs/armeabi-v7a"
             
