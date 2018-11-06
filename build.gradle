@@ -15,7 +15,7 @@ apply plugin: 'com.jfrog.bintray'
 
 group = 'com.readdle.android.swift'
 archivesBaseName = 'gradle'
-version = '1.1.8'
+version = '1.1.9'
 
 repositories {
     jcenter()
@@ -45,8 +45,8 @@ publishing {
 
 bintray {
     // define this in ~/.gradle/gradle.properties
-    user = bintray_user
-    key = bintray_api_key
+    user = System.getenv("BINTRAY_USER")
+    key = System.getenv("BINTRAY_API_KEY")
 
     publish = true
     publications = ['mavenJava'] //When uploading Maven-based publication files
