@@ -55,7 +55,7 @@ class SwiftAndroidPlugin implements Plugin<Project> {
         // Swift build chain
         Task swiftLinkGenerated = createLinkGeneratedSourcesTask(project, variant)
         Task swiftBuild = createSwiftBuildTask(project, variant, isDebug)
-        Task copySwift = createCopyTask(project, swiftBuild, variant, isDebug)
+        Task copySwift = createCopyTask(project, swiftBuild, variant)
 
         swiftBuild.dependsOn(swiftLinkGenerated)
 
@@ -66,8 +66,17 @@ class SwiftAndroidPlugin implements Plugin<Project> {
 
         def variantName = variant.name.capitalize()
 
-        Task compileDebugNdk = project.tasks.getByName("compile${variantName}Ndk")
-        compileDebugNdk.dependsOn(copySwift)
+        Task compileNdk = project.tasks.findByName("compile${variantName}Ndk")
+        Task externalNativeBuild = project.tasks.findByName("externalNativeBuild${variantName}")
+        Task compileSources = project.tasks.findByName("compile${variantName}Sources")
+
+        if (compileNdk != null) {
+            compileNdk.dependsOn(copySwift)
+        } else if (externalNativeBuild != null) {
+            externalNativeBuild.dependsOn(copySwift)
+        } else {
+            compileSources.dependsOn(copySwift)
+        }
     }
 
     private void checkToolchain() {
@@ -189,7 +198,7 @@ class SwiftAndroidPlugin implements Plugin<Project> {
         }
     }
 
-    private Task createCopyTask(Project project, Task swiftBuildTask, def variant, boolean debug) {
+    private Task createCopyTask(Project project, Task swiftBuildTask, def variant) {
         def variantName = variant.name.capitalize()
 
         return project.task(type: Copy, "copySwift${variantName}") {
