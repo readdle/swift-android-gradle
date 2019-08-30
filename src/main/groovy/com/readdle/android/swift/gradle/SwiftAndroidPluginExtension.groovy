@@ -5,10 +5,11 @@ import org.gradle.util.GUtil
 
 class SwiftAndroidPluginExtension {
     static class SwiftFlags {
-        private final List<Object> extraBuildFlags = new ArrayList<>()
-        private final List<Object> extraInstallFlags = new ArrayList<>()
+        private final List<String> extraBuildFlags = new ArrayList<>()
+        private final List<String> extraInstallFlags = new ArrayList<>()
+        private final Set<String> abiFilters = new HashSet<>()
 
-        SwiftFlags extraBuildFlags(Object... extraBuildFlags) {
+        SwiftFlags extraBuildFlags(String... extraBuildFlags) {
             if (extraBuildFlags == null) {
                 throw new IllegalArgumentException("extraBuildFlags == null!")
             }
@@ -17,18 +18,12 @@ class SwiftAndroidPluginExtension {
             return this
         }
 
-        SwiftFlags extraBuildFlags(Iterable<?> extraBuildFlags) {
+        SwiftFlags extraBuildFlags(Iterable<String> extraBuildFlags) {
             GUtil.addToCollection(this.extraBuildFlags, extraBuildFlags)
             return this
         }
 
-        SwiftFlags setExtraBuildFlags(List<String> extraBuildFlags) {
-            this.extraBuildFlags.clear()
-            this.extraBuildFlags.addAll(extraBuildFlags)
-            return this
-        }
-
-        SwiftFlags setExtraBuildFlags(Iterable<?> extraBuildFlags) {
+        SwiftFlags setExtraBuildFlags(Iterable<String> extraBuildFlags) {
             this.extraBuildFlags.clear()
             GUtil.addToCollection(this.extraBuildFlags, extraBuildFlags)
             return this
@@ -36,14 +31,14 @@ class SwiftAndroidPluginExtension {
 
         List<String> getExtraBuildFlags() {
             List<String> args = new ArrayList<String>()
-            for (Object argument : extraBuildFlags) {
-                args.add(argument.toString())
+            for (String argument : extraBuildFlags) {
+                args.add(argument)
             }
 
             return args
         }
 
-        SwiftFlags extraInstallFlags(Object... extraInstallFlags) {
+        SwiftFlags extraInstallFlags(String... extraInstallFlags) {
             if (extraInstallFlags == null) {
                 throw new IllegalArgumentException("extraInstallFlags == null!")
             }
@@ -52,18 +47,12 @@ class SwiftAndroidPluginExtension {
             return this
         }
 
-        SwiftFlags extraInstallFlags(Iterable<?> extraInstallFlags) {
+        SwiftFlags extraInstallFlags(Iterable<String> extraInstallFlags) {
             GUtil.addToCollection(this.extraInstallFlags, extraInstallFlags)
             return this
         }
 
-        SwiftFlags setExtraInstallFlags(List<String> extraInstallFlags) {
-            this.extraInstallFlags.clear()
-            this.extraInstallFlags.addAll(extraInstallFlags)
-            return this
-        }
-
-        SwiftFlags setExtraInstallFlags(Iterable<?> extraInstallFlags) {
+        SwiftFlags setExtraInstallFlags(Iterable<String> extraInstallFlags) {
             this.extraInstallFlags.clear()
             GUtil.addToCollection(this.extraInstallFlags, extraInstallFlags)
             return this
@@ -71,14 +60,47 @@ class SwiftAndroidPluginExtension {
 
         List<String> getExtraInstallFlags() {
             List<String> args = new ArrayList<String>()
-            for (Object argument : extraInstallFlags) {
-                args.add(argument.toString())
+            for (String argument : extraInstallFlags) {
+                args.add(argument)
             }
 
             return args
         }
-    }
 
+        SwiftFlags abiFilters(String... abiFilters) {
+            if (abiFilters == null) {
+                throw new IllegalArgumentException("extraBuildFlags == null!")
+            }
+
+            this.abiFilters.addAll(validateAbi(Arrays.asList(abiFilters)))
+            return this
+        }
+
+        SwiftFlags abiFilters(Iterable<String> abiFilters) {
+            GUtil.addToCollection(this.abiFilters, validateAbi(abiFilters))
+            return this
+        }
+
+        SwiftFlags setAbiFilters(Iterable<String> abiFilters) {
+            this.abiFilters.clear()
+            GUtil.addToCollection(this.abiFilters, validateAbi(abiFilters))
+            return this
+        }
+
+        Set<String> getAbiFilters() {
+            return new HashSet<String>(abiFilters)
+        }
+
+        private static <T extends Iterable<? extends String>> T validateAbi(T arg) {
+            for (String abi : arg) {
+                if (!Arch.isValidAndroidAbi(abi)) {
+                    throw new IllegalArgumentException("'${abi}' is not valid Android ABI")
+                }
+            }
+
+            return arg
+        }
+    }
 
     private Project project
     SwiftFlags debug = new SwiftFlags()

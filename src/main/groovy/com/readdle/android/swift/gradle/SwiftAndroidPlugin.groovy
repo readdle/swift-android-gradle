@@ -12,7 +12,8 @@ import java.nio.file.Files
 import java.nio.file.Path
 
 class SwiftAndroidPlugin implements Plugin<Project> {
-    ToolchainHandle toolchainHandle
+    private ToolchainHandle toolchainHandle
+    private Task installToolsTask
 
     @Override
     void apply(Project project) {
@@ -23,7 +24,7 @@ class SwiftAndroidPlugin implements Plugin<Project> {
         configurePropertiesTask(project)
 
         project.afterEvaluate {
-            Task installTools = createInstallSwiftToolsTask(project)
+            installToolsTask = createInstallSwiftToolsTask(project)
 
             createSwiftUpdateTask(project)
 
@@ -34,7 +35,7 @@ class SwiftAndroidPlugin implements Plugin<Project> {
             }
 
             project.android.applicationVariants.all { variant ->
-                handleVariant(project, variant, installTools)
+                handleVariant(project, variant)
             }
         }
     }
@@ -47,23 +48,38 @@ class SwiftAndroidPlugin implements Plugin<Project> {
         }
     }
 
-    private void handleVariant(Project project, def variant, Task installTools) {
+    private void handleVariant(Project project, def variant) {
         boolean isDebug = variant.buildType.isDebuggable()
 
-        Task swiftInstall = createSwiftInstallTask(project, variant, isDebug)
+        Task swiftInstall = createSwiftInstallTask(project, variant)
+        swiftInstall.dependsOn(installToolsTask)
 
-        // Swift build chain
         Task swiftLinkGenerated = createLinkGeneratedSourcesTask(project, variant)
-        Task swiftBuild = createSwiftBuildTask(project, variant, isDebug)
-        Task copySwift = createCopyTask(project, swiftBuild, variant)
 
-        swiftBuild.dependsOn(swiftLinkGenerated)
+        SwiftAndroidPluginExtension extension = project.extensions.getByType(SwiftAndroidPluginExtension)
+        Set<String> abiFilters = isDebug ? extension.debug.abiFilters : extension.release.abiFilters
 
-        // Tasks using build tools
-        swiftInstall.dependsOn(installTools)
-        swiftBuild.dependsOn(installTools)
-        copySwift.dependsOn(installTools)
+        Set<Arch> allowedArchitectures = Arch.values()
+                .findAll { arch -> return abiFilters.isEmpty() || abiFilters.contains(arch.androidAbi) }
+                .toSet()
 
+        for (Arch arch : Arch.values()) {
+            Task swiftChain = createSwiftTaskChain(project, variant, arch, swiftLinkGenerated)
+
+            if (allowedArchitectures.contains(arch)) {
+                mountSwiftToAndroidPipeline(project, variant, swiftChain)
+            }
+        }
+    }
+
+    private Task createSwiftTaskChain(Project project, def variant, Arch arch, Task swiftLinkGenerated) {
+        Task swiftBuild = createSwiftBuildTask(project, variant, arch)
+        swiftBuild.dependsOn(installToolsTask, swiftLinkGenerated)
+
+        return createCopyTask(project, variant, arch, swiftBuild)
+    }
+
+    private static void mountSwiftToAndroidPipeline(Project project, def variant, Task copySwift) {
         def variantName = variant.name.capitalize()
 
         Task compileNdk = project.tasks.findByName("compile${variantName}Ndk")
@@ -140,13 +156,14 @@ class SwiftAndroidPlugin implements Plugin<Project> {
         }
     }
 
-    private Task createSwiftInstallTask(Project project, def variant, boolean debug) {
+    private Task createSwiftInstallTask(Project project, def variant) {
+        boolean isDebug = variant.buildType.isDebuggable()
         def variantName = variant.name.capitalize()
 
         def extension = project.extensions.getByType(SwiftAndroidPluginExtension)
 
-        def configurationArgs = ["--configuration", debug ? "debug" : "release"]
-        def extraArgs = debug ? extension.debug.extraInstallFlags : extension.release.extraInstallFlags
+        def configurationArgs = ["--configuration", isDebug ? "debug" : "release"]
+        def extraArgs = isDebug ? extension.debug.extraInstallFlags : extension.release.extraInstallFlags
 
         return project.task(type: Exec, "swiftInstall${variantName}") {
             workingDir "src/main/swift"
@@ -156,38 +173,21 @@ class SwiftAndroidPlugin implements Plugin<Project> {
         }
     }
 
-    private Task createSwiftBuildTask(Project project, def variant, boolean debug) {
-        def variantName = variant.name.capitalize()
+    private Task createSwiftBuildTask(Project project, def variant, Arch arch) {
+        boolean isDebug = variant.buildType.isDebuggable()
+        def taskQualifier = taskQualifier(variant, arch)
 
         def extension = project.extensions.getByType(SwiftAndroidPluginExtension)
 
-        def configurationArgs = ["--configuration", debug ? "debug" : "release"]
-        def extraArgs = debug ? extension.debug.extraBuildFlags : extension.release.extraBuildFlags
+        def configurationArgs = ["--configuration", isDebug ? "debug" : "release"]
+        def extraArgs = isDebug ? extension.debug.extraBuildFlags : extension.release.extraBuildFlags
         def arguments = configurationArgs + extraArgs
 
-        def sources = project.fileTree("src/main/swift") {
-            include "**/*.c"
-            include "**/*.h"
-            include "**/*.cpp"
-            include "**/*.swift"
-        }
-
-        String swiftPmBuildPath = debug ?
-                "src/main/swift/.build/debug" : "src/main/swift/.build/release"
-
-        def outputLibraries = project.fileTree(swiftPmBuildPath) {
-            include "*.so"
-        }
-
-        return project.task(type: Exec, "swiftBuild${variantName}") {
+        return project.task(type: Exec, "swiftBuild${taskQualifier}") {
             workingDir "src/main/swift"
             executable toolchainHandle.swiftBuildPath
             args arguments
-            environment toolchainHandle.fullEnv
-
-            inputs.property("args", arguments)
-            inputs.files(sources).skipWhenEmpty()
-            outputs.files(outputLibraries)
+            environment toolchainHandle.getFullEnv(arch)
 
             doFirst {
                 checkNdk()
@@ -198,22 +198,40 @@ class SwiftAndroidPlugin implements Plugin<Project> {
         }
     }
 
-    private Task createCopyTask(Project project, Task swiftBuildTask, def variant) {
-        def variantName = variant.name.capitalize()
+    private Task createCopyTask(Project project, def variant, Arch arch, Task swiftBuildTask) {
+        def taskQualifier = taskQualifier(variant, arch)
 
-        return project.task(type: Copy, "copySwift${variantName}") {
-            from("src/main/swift/.build/jniLibs/armeabi-v7a") {
+        boolean isDebug = variant.buildType.isDebuggable()
+        String swiftPmBuildPath = isDebug
+                ? "src/main/swift/.build/${arch.swiftTriple}/debug"
+                : "src/main/swift/.build/${arch.swiftTriple}/release"
+
+        def outputLibraries = project.fileTree(swiftPmBuildPath) {
+            include "*.so"
+        }
+
+        return project.task(type: Copy, "copySwift${taskQualifier}") {
+            dependsOn(swiftBuildTask)
+
+            from("src/main/swift/.build/jniLibs/${arch.androidAbi}") {
                 include "*.so"
             }
-            from(toolchainHandle.swiftLibFolder) {
+            from(toolchainHandle.getSwiftLibFolder(arch)) {
                 include "*.so"
             }
-            from(swiftBuildTask)
+            from(outputLibraries)
 
-            into "src/main/jniLibs/armeabi-v7a"
+            into "src/main/jniLibs/${arch.androidAbi}"
             
             fileMode 0644
         }
+    }
+
+    private static String taskQualifier(def variant, Arch arch) {
+        String archComponent = arch.variantName.capitalize()
+        String variantComponent = variant.name.capitalize()
+
+        return archComponent + variantComponent
     }
 
     private static Task createLinkGeneratedSourcesTask(Project project, def variant) {
@@ -247,7 +265,7 @@ class SwiftAndroidPlugin implements Plugin<Project> {
         if (extension.useKapt) {
             return new File(project.buildDir, "generated/source/kapt/${variantDir}/SwiftGenerated").toPath()
         } else {
-            return new File(project.buildDir, "generated/source/apt/${variantDir}/SwiftGenerated").toPath()
+            return new File(project.buildDir, "generated/ap_generated_sources/${variantDir}/out/SwiftGenerated").toPath()
         }
     }
 
