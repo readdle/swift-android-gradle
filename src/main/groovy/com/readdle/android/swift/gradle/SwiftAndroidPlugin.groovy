@@ -84,12 +84,15 @@ class SwiftAndroidPlugin implements Plugin<Project> {
 
         Task compileNdk = project.tasks.findByName("compile${variantName}Ndk")
         Task externalNativeBuild = project.tasks.findByName("externalNativeBuild${variantName}")
+        Task mergeLibs = project.tasks.findByName("merge${variantName}NativeLibs")
         Task compileSources = project.tasks.findByName("compile${variantName}Sources")
 
         if (compileNdk != null) {
             compileNdk.dependsOn(copySwift)
         } else if (externalNativeBuild != null) {
             externalNativeBuild.dependsOn(copySwift)
+        } else if (mergeLibs != null) {
+            mergeLibs.dependsOn(copySwift)
         } else {
             compileSources.dependsOn(copySwift)
         }
