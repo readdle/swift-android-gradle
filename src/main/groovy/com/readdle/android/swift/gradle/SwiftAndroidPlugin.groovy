@@ -84,7 +84,7 @@ class SwiftAndroidPlugin implements Plugin<Project> {
 
         Task compileNdk = project.tasks.findByName("compile${variantName}Ndk")
         Task externalNativeBuild = project.tasks.findByName("externalNativeBuild${variantName}")
-        Task mergeLibs = project.tasks.findByName("merge${variantName}NativeLibs")
+        Task mergeLibs = project.tasks.findByName("merge${variantName}JniLibFolders")
         Task compileSources = project.tasks.findByName("compile${variantName}Sources")
 
         if (compileNdk != null) {

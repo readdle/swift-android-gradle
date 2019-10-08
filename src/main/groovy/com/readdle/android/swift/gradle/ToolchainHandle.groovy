@@ -8,7 +8,7 @@ import org.gradle.api.Project
 
 class ToolchainHandle {
     public static final String FN_LOCAL_PROPERTIES = "local.properties"
-    public static final String TOOLS_VERSION = "1.9.4-swift5"
+    public static final String TOOLS_VERSION = "1.9.6-swift5"
     public static final String SWIFT_ANDROID_HOME_KEY = "swift-android.dir"
     public static final String ANDROID_NDK_HOME_KEY = "ndk.dir"
 
