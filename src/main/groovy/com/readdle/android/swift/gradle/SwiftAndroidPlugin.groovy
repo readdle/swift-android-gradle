@@ -239,9 +239,8 @@ class SwiftAndroidPlugin implements Plugin<Project> {
 
     private static Task createLinkGeneratedSourcesTask(Project project, def variant) {
         def variantName = variant.name.capitalize()
-        def variantDir = variant.dirName
 
-        def target = generatedSourcesPath(project, variantDir)
+        def target = generatedSourcesPath(project, variant)
 
         def swiftBuildDir = new File(project.projectDir, "src/main/swift/.build")
         def link = new File(swiftBuildDir, "generated").toPath()
@@ -262,13 +261,13 @@ class SwiftAndroidPlugin implements Plugin<Project> {
         }
     }
 
-    private static Path generatedSourcesPath(Project project, variantDir) {
+    private static Path generatedSourcesPath(Project project, def variant) {
         def extension = project.extensions.getByType(SwiftAndroidPluginExtension)
 
         if (extension.useKapt) {
-            return new File(project.buildDir, "generated/source/kapt/${variantDir}/SwiftGenerated").toPath()
+            return new File(project.buildDir, "generated/source/kapt/${variant.name}/SwiftGenerated").toPath()
         } else {
-            return new File(project.buildDir, "generated/ap_generated_sources/${variantDir}/out/SwiftGenerated").toPath()
+            return new File(project.buildDir, "generated/ap_generated_sources/${variant.name}/out/SwiftGenerated").toPath()
         }
     }
 
