@@ -19,12 +19,14 @@ version = '1.3.4'
 
 repositories {
     jcenter()
+    google()
 }
 
 dependencies {
     compile gradleApi()
     compile localGroovy()
     compile "commons-configuration:commons-configuration:1.10"
+    compileOnly 'com.android.tools.build:gradle:4.1.0'
 }
 
 // custom tasks for creating source/javadoc jars

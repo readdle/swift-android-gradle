@@ -1,5 +1,6 @@
 package com.readdle.android.swift.gradle
 
+import com.android.build.gradle.api.ApplicationVariant
 import org.gradle.api.GradleException
 import org.gradle.api.Plugin
 import org.gradle.api.Project
@@ -34,7 +35,7 @@ class SwiftAndroidPlugin implements Plugin<Project> {
                 cleanTask.dependsOn(swiftClean)
             }
 
-            project.android.applicationVariants.all { variant ->
+            project.android.applicationVariants.all { ApplicationVariant variant ->
                 handleVariant(project, variant)
             }
         }
@@ -48,7 +49,7 @@ class SwiftAndroidPlugin implements Plugin<Project> {
         }
     }
 
-    private void handleVariant(Project project, def variant) {
+    private void handleVariant(Project project, ApplicationVariant variant) {
         boolean isDebug = variant.buildType.isJniDebuggable()
 
         Task swiftInstall = createSwiftInstallTask(project, variant)
@@ -75,14 +76,14 @@ class SwiftAndroidPlugin implements Plugin<Project> {
         }
     }
 
-    private Task createSwiftTaskChain(Project project, def variant, Arch arch, Task swiftLinkGenerated) {
+    private Task createSwiftTaskChain(Project project, ApplicationVariant variant, Arch arch, Task swiftLinkGenerated) {
         Task swiftBuild = createSwiftBuildTask(project, variant, arch)
         swiftBuild.dependsOn(installToolsTask, swiftLinkGenerated)
 
         return createCopyTask(project, variant, arch, swiftBuild)
     }
 
-    private static void mountSwiftToAndroidPipeline(Project project, def variant, Task copySwift) {
+    private static void mountSwiftToAndroidPipeline(Project project, ApplicationVariant variant, Task copySwift) {
         def variantName = variant.name.capitalize()
 
         Task compileNdk = project.tasks.findByName("compile${variantName}Ndk")
@@ -162,7 +163,7 @@ class SwiftAndroidPlugin implements Plugin<Project> {
         }
     }
 
-    private Task createSwiftInstallTask(Project project, def variant) {
+    private Task createSwiftInstallTask(Project project, ApplicationVariant variant) {
         boolean isDebug = variant.buildType.isJniDebuggable()
         def variantName = isDebug ? "Debug" : "Release"
 
@@ -184,7 +185,7 @@ class SwiftAndroidPlugin implements Plugin<Project> {
         }
     }
 
-    private Task createSwiftBuildTask(Project project, def variant, Arch arch) {
+    private Task createSwiftBuildTask(Project project, ApplicationVariant variant, Arch arch) {
         boolean isDebug = variant.buildType.isJniDebuggable()
         def taskQualifier = taskQualifier(variant, arch)
 
@@ -214,7 +215,7 @@ class SwiftAndroidPlugin implements Plugin<Project> {
         }
     }
 
-    private Task createCopyTask(Project project, def variant, Arch arch, Task swiftBuildTask) {
+    private Task createCopyTask(Project project, ApplicationVariant variant, Arch arch, Task swiftBuildTask) {
         def taskQualifier = taskQualifier(variant, arch)
 
         def task = project.tasks.findByName("copySwift${taskQualifier}")
@@ -244,17 +245,17 @@ class SwiftAndroidPlugin implements Plugin<Project> {
 
             into "src/main/jniLibs/${arch.androidAbi}"
             
-            fileMode 0644
+            fileMode = 0644
         }
     }
 
-    private static String taskQualifier(def variant, Arch arch) {
+    private static String taskQualifier(ApplicationVariant variant, Arch arch) {
         String archComponent = arch.variantName.capitalize()
         String buildTypeComponent = (variant.buildType.isJniDebuggable()) ? "Debug" : "Release"
         return archComponent + buildTypeComponent
     }
 
-    private static Task createLinkGeneratedSourcesTask(Project project, def variant) {
+    private static Task createLinkGeneratedSourcesTask(Project project, ApplicationVariant variant) {
         def variantName = variant.name.capitalize()
 
         def target = generatedSourcesPath(project, variant)
@@ -278,7 +279,7 @@ class SwiftAndroidPlugin implements Plugin<Project> {
         }
     }
 
-    private static Path generatedSourcesPath(Project project, def variant) {
+    private static Path generatedSourcesPath(Project project, ApplicationVariant variant) {
         def extension = project.extensions.getByType(SwiftAndroidPluginExtension)
 
         if (extension.useKapt) {
