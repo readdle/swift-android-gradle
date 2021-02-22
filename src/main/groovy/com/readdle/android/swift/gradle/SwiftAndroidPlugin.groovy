@@ -60,7 +60,7 @@ class SwiftAndroidPlugin implements Plugin<Project> {
         SwiftAndroidPluginExtension extension = project.extensions.getByType(SwiftAndroidPluginExtension)
         Set<String> abiFilters = isDebug ? extension.debug.abiFilters : extension.release.abiFilters
         if (abiFilters == null || abiFilters.isEmpty()) {
-            abiFilters = variant.buildType.ndk.abiFilters
+            abiFilters = variant.buildType.ndk.abiFilters ?: new HashSet<String>()
         }
 
         Set<Arch> allowedArchitectures = Arch.values()
@@ -251,7 +251,7 @@ class SwiftAndroidPlugin implements Plugin<Project> {
 
     private static String taskQualifier(ApplicationVariant variant, Arch arch) {
         String archComponent = arch.variantName.capitalize()
-        String buildTypeComponent = (variant.buildType.isJniDebuggable()) ? "Debug" : "Release"
+        String buildTypeComponent = variant.buildType.isJniDebuggable() ? "Debug" : "Release"
         return archComponent + buildTypeComponent
     }
 

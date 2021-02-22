@@ -70,7 +70,7 @@ class SwiftAndroidPluginExtension {
         @Deprecated
         SwiftFlags abiFilters(String... abiFilters) {
             if (abiFilters == null) {
-                throw new IllegalArgumentException("extraBuildFlags == null!")
+                throw new IllegalArgumentException("abiFilters == null!")
             }
 
             this.abiFilters.addAll(validateAbi(Arrays.asList(abiFilters)))
