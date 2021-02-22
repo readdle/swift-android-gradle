@@ -49,7 +49,7 @@ class SwiftAndroidPlugin implements Plugin<Project> {
     }
 
     private void handleVariant(Project project, def variant) {
-        boolean isDebug = variant.buildType.isDebuggable()
+        boolean isDebug = variant.buildType.isJniDebuggable()
 
         Task swiftInstall = createSwiftInstallTask(project, variant)
         swiftInstall.dependsOn(installToolsTask)
@@ -58,6 +58,9 @@ class SwiftAndroidPlugin implements Plugin<Project> {
 
         SwiftAndroidPluginExtension extension = project.extensions.getByType(SwiftAndroidPluginExtension)
         Set<String> abiFilters = isDebug ? extension.debug.abiFilters : extension.release.abiFilters
+        if (abiFilters == null || abiFilters.isEmpty()) {
+            abiFilters = variant.buildType.ndk.abiFilters
+        }
 
         Set<Arch> allowedArchitectures = Arch.values()
                 .findAll { arch -> return abiFilters.isEmpty() || abiFilters.contains(arch.androidAbi) }
@@ -160,8 +163,13 @@ class SwiftAndroidPlugin implements Plugin<Project> {
     }
 
     private Task createSwiftInstallTask(Project project, def variant) {
-        boolean isDebug = variant.buildType.isDebuggable()
-        def variantName = variant.name.capitalize()
+        boolean isDebug = variant.buildType.isJniDebuggable()
+        def variantName = isDebug ? "Debug" : "Release"
+
+        def task = project.tasks.findByName("swiftInstall${variantName}")
+        if (task != null) {
+            return task
+        }
 
         def extension = project.extensions.getByType(SwiftAndroidPluginExtension)
 
@@ -177,8 +185,13 @@ class SwiftAndroidPlugin implements Plugin<Project> {
     }
 
     private Task createSwiftBuildTask(Project project, def variant, Arch arch) {
-        boolean isDebug = variant.buildType.isDebuggable()
+        boolean isDebug = variant.buildType.isJniDebuggable()
         def taskQualifier = taskQualifier(variant, arch)
+
+        def task = project.tasks.findByName("swiftBuild${taskQualifier}")
+        if (task != null) {
+            return task
+        }
 
         def extension = project.extensions.getByType(SwiftAndroidPluginExtension)
 
@@ -204,7 +217,12 @@ class SwiftAndroidPlugin implements Plugin<Project> {
     private Task createCopyTask(Project project, def variant, Arch arch, Task swiftBuildTask) {
         def taskQualifier = taskQualifier(variant, arch)
 
-        boolean isDebug = variant.buildType.isDebuggable()
+        def task = project.tasks.findByName("copySwift${taskQualifier}")
+        if (task != null) {
+            return task
+        }
+
+        boolean isDebug = variant.buildType.isJniDebuggable()
         String swiftPmBuildPath = isDebug
                 ? "src/main/swift/.build/${arch.swiftTriple}/debug"
                 : "src/main/swift/.build/${arch.swiftTriple}/release"
@@ -232,9 +250,8 @@ class SwiftAndroidPlugin implements Plugin<Project> {
 
     private static String taskQualifier(def variant, Arch arch) {
         String archComponent = arch.variantName.capitalize()
-        String variantComponent = variant.name.capitalize()
-
-        return archComponent + variantComponent
+        String buildTypeComponent = (variant.buildType.isJniDebuggable()) ? "Debug" : "Release"
+        return archComponent + buildTypeComponent
     }
 
     private static Task createLinkGeneratedSourcesTask(Project project, def variant) {
