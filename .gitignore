@@ -6,3 +6,4 @@
 build
 *.class
 *.pyc
+local.properties

@@ -1,0 +1,68 @@
+apply plugin: 'maven-publish'
+apply plugin: 'signing'
+
+task androidSourcesJar(type: Jar) {
+    archiveClassifier.set('sources')
+}
+
+artifacts {
+    archives androidSourcesJar
+}
+
+group = PUBLISH_GROUP_ID
+version = PUBLISH_VERSION
+
+afterEvaluate {
+    publishing {
+        publications {
+            release(MavenPublication) {
+                // The coordinates of the library, being set from variables that
+                // we'll set up later
+                groupId PUBLISH_GROUP_ID
+                artifactId PUBLISH_ARTIFACT_ID
+                version PUBLISH_VERSION
+
+                // Three artifacts: jar, sources and javadoc
+                artifact jar
+                artifact sourcesJar
+                artifact javadocJar
+
+                // Mostly self-explanatory metadata
+                pom {
+                    name = PUBLISH_ARTIFACT_ID
+                    description = 'Swift Android Gradle plugin'
+                    url = 'https://github.com/readdle/swift-android-gradle'
+                    licenses {
+                        license {
+                            name = 'MIT License'
+                            url = 'https://github.com/readdle/swift-android-gradle/blob/master/LICENSE'
+                        }
+                    }
+                    developers {
+                        developer {
+                            id = 'andriydruk'
+                            name = 'Andrew Druk'
+                            email = 'adruk@readdle.com'
+                        }
+                    }
+
+                    // Version control info - if you're using GitHub, follow the
+                    // format as seen here
+                    scm {
+                        connection = 'scm:git:github.com/readdle/swift-android-gradle.git'
+                        developerConnection = 'scm:git:ssh://github.com/readdle/swift-android-gradle.git'
+                        url = 'https://github.com/readdle/swift-android-gradle'
+                    }
+                }
+            }
+        }
+    }
+}
+
+ext["signing.keyId"] = rootProject.ext["signing.keyId"]
+ext["signing.password"] = rootProject.ext["signing.password"]
+ext["signing.secretKeyRingFile"] = rootProject.ext["signing.secretKeyRingFile"]
+
+signing {
+    sign publishing.publications
+}
