@@ -1,9 +1,11 @@
 
-# This plugin integrates [Swift Android Toolchain](https://github.com/readdle/swift-android-toolchain) to Gradle
+# Swift Android Gradle plugin ![Maven Central](https://img.shields.io/maven-central/v/com.readdle.android.swift/gradle)
+
+This plugin integrates [Swift Android Toolchain](https://github.com/readdle/swift-android-toolchain) to Gradle
 
 ## Pre-requirements
 
-This plugin require [Android NDK r15c](https://dl.google.com/android/repository/android-ndk-r15c-darwin-x86_64.zip) and [Swift Android Toolchain](https://bintray.com/readdle/swift-android-toolchain/swift-android-toolchain/_latestVersion)
+This plugin require [Android NDK r17c](https://dl.google.com/android/repository/android-ndk-r17c-darwin-x86_64.zip) and [Swift Android Toolchain](https://github.com/readdle/swift-android-toolchain/releases/latest)
 
 Plugin lookup NDK and toolchain by environment variables `ANDROID_NDK_HOME` and `SWIFT_ANDROID_HOME` or `local.properties` in project root
 
@@ -20,10 +22,10 @@ Plugin build swift code using [SwiftPM](https://github.com/apple/swift-package-m
 ```gradle
 buildscript {
     repositories {
-        jcenter()
+        mavenCentral()
     }
     dependencies {
-        classpath 'com.readdle.android.swift:gradle:1.1.5'
+        classpath 'com.readdle.android.swift:gradle:1.3.5'
     }
 }
 ```
@@ -34,7 +36,29 @@ buildscript {
 apply plugin: 'com.readdle.android.swift'
 ```
 
-3. Optionally you can add some extra configuration to your project build.gradle. For example:
+3. Configure build types and arhitecture
+
+```gradle
+buildTypes {
+    release {
+        debuggable false
+        // Build Swift in release mode
+        jniDebuggable false
+        // all 4 arhitectures
+    }
+    debug {
+        debuggable true
+        // Build Swift in debug mode
+        jniDebuggable true
+        // only 2 arhitectures
+        ndk {
+            abiFilters = ["arm64-v8a", "x86_64"]
+        }
+    }
+}
+```
+
+4. Optionally you can add some extra configuration to your project build.gradle. For example:
 
 ```gradle
 swift {
