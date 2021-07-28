@@ -2,9 +2,9 @@ package com.readdle.android.swift.gradle
 
 enum Arch {
     ARM("armv7-unknown-linux-androideabi", "armeabi-v7a"),
-    ARM64("aarch64-none-linux-android", "arm64-v8a"),
-    x86("i686-none-linux-android", "x86"),
-    x86_64("x86_64-none-linux-android","x86_64"),
+    ARM64("aarch64-unknown-linux-android", "arm64-v8a"),
+    x86("i686-unknown-linux-android", "x86"),
+    x86_64("x86_64-unknown-linux-android","x86_64"),
     ;
 
     final String swiftArch
