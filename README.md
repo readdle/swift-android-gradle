@@ -5,7 +5,7 @@ This plugin integrates [Swift Android Toolchain](https://github.com/readdle/swif
 
 ## Pre-requirements
 
-This plugin require [Android NDK r17c](https://dl.google.com/android/repository/android-ndk-r17c-darwin-x86_64.zip) and [Swift Android Toolchain](https://github.com/readdle/swift-android-toolchain/releases/latest)
+This plugin require [Android NDK r21e](https://dl.google.com/android/repository/android-ndk-r21e-darwin-x86_64.zip) and [Swift Android Toolchain](https://github.com/readdle/swift-android-toolchain/releases/latest)
 
 Plugin lookup NDK and toolchain by environment variables `ANDROID_NDK_HOME` and `SWIFT_ANDROID_HOME` or `local.properties` in project root
 
@@ -25,7 +25,7 @@ buildscript {
         mavenCentral()
     }
     dependencies {
-        classpath 'com.readdle.android.swift:gradle:1.3.5'
+        classpath 'com.readdle.android.swift:gradle:1.4.0'
     }
 }
 ```
