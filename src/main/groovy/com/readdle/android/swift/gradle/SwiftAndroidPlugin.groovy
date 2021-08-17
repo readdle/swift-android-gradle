@@ -8,6 +8,7 @@ import org.gradle.api.Task
 import org.gradle.api.tasks.Copy
 import org.gradle.api.tasks.Delete
 import org.gradle.api.tasks.Exec
+import org.gradle.api.file.DuplicatesStrategy
 
 import java.nio.file.Files
 import java.nio.file.Path
@@ -246,6 +247,7 @@ class SwiftAndroidPlugin implements Plugin<Project> {
             into "src/main/jniLibs/${arch.androidAbi}"
             
             fileMode = 0644
+            duplicatesStrategy = DuplicatesStrategy.INCLUDE
         }
     }
 
