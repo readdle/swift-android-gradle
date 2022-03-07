@@ -8,6 +8,7 @@ import org.gradle.api.Task
 import org.gradle.api.tasks.Copy
 import org.gradle.api.tasks.Delete
 import org.gradle.api.tasks.Exec
+import org.gradle.api.file.DuplicatesStrategy
 
 import java.nio.file.Files
 import java.nio.file.Path
@@ -246,12 +247,13 @@ class SwiftAndroidPlugin implements Plugin<Project> {
             into "src/main/jniLibs/${arch.androidAbi}"
             
             fileMode = 0644
+            duplicatesStrategy = DuplicatesStrategy.INCLUDE
         }
     }
 
     private static String taskQualifier(ApplicationVariant variant, Arch arch) {
         String archComponent = arch.variantName.capitalize()
-        String buildTypeComponent = variant.buildType.isJniDebuggable() ? "Debug" : "Release"
+        String buildTypeComponent = variant.buildType.name.capitalize()
         return archComponent + buildTypeComponent
     }
 

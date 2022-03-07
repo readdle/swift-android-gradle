@@ -21,9 +21,9 @@ repositories {
 }
 
 dependencies {
-    compile gradleApi()
-    compile localGroovy()
-    compile "commons-configuration:commons-configuration:1.10"
+    implementation gradleApi()
+    implementation localGroovy()
+    implementation "commons-configuration:commons-configuration:1.10"
     compileOnly 'com.android.tools.build:gradle:4.1.0'
 }
 
@@ -36,7 +36,7 @@ ext {
     // Provide your own coordinates here
     PUBLISH_GROUP_ID = 'com.readdle.android.swift'
     PUBLISH_ARTIFACT_ID = 'gradle'
-    PUBLISH_VERSION = '1.4.0'
+    PUBLISH_VERSION = '1.4.1'
 }
 
 apply from: "${rootProject.projectDir}/publish-module.gradle"
