@@ -288,7 +288,7 @@ class SwiftAndroidPlugin implements Plugin<Project> {
     private static Task createSwiftLintTask(Project project) {
         return project.task(type: Exec, "swiftLint") {
             workingDir "src/main/swift"
-            commandLine "swiftlint", "--reporter", "xcode"
+            commandLine "swiftlint", "--strict", "--reporter", "xcode"
 
             ignoreExitValue = true
             errorOutput = new ByteArrayOutputStream()
