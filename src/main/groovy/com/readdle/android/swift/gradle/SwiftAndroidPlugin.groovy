@@ -28,6 +28,10 @@ class SwiftAndroidPlugin implements Plugin<Project> {
         project.afterEvaluate {
             installToolsTask = createInstallSwiftToolsTask(project)
 
+            if (extension.swiftLintEnabled) {
+                installToolsTask.dependsOn(createSwiftLintTask(project))
+            }
+
             createSwiftUpdateTask(project)
 
             Task swiftClean = createCleanTask(project, extension.usePackageClean)
@@ -277,6 +281,24 @@ class SwiftAndroidPlugin implements Plugin<Project> {
                         link,
                         link.getParent().relativize(target)
                 )
+            }
+        }
+    }
+
+    private static Task createSwiftLintTask(Project project) {
+        return project.task(type: Exec, "swiftLint") {
+            workingDir "src/main/swift"
+            commandLine "swiftlint", "--strict", "--reporter", "xcode"
+
+            ignoreExitValue = true
+            errorOutput = new ByteArrayOutputStream()
+            standardOutput = new ByteArrayOutputStream()
+
+            doLast {
+                def output = standardOutput.toString()
+                if (!output.empty) {
+                    throw new GradleException(output)
+                }
             }
         }
     }

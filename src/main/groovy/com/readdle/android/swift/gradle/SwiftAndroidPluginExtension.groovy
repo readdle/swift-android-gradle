@@ -111,6 +111,7 @@ class SwiftAndroidPluginExtension {
 
     boolean cleanEnabled = true
     boolean usePackageClean = true
+    boolean swiftLintEnabled = false
     boolean useKapt = false
 
     SwiftAndroidPluginExtension(Project project) {
