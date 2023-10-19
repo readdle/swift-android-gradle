@@ -244,17 +244,17 @@ class SwiftAndroidPlugin implements Plugin<Project> {
                 : "src/main/swift/.build/${arch.swiftTriple}/release"
 
         def outputLibraries = project.fileTree(swiftPmBuildPath) {
-            include "*.so"
+            include "*.so", "*.so.*"
         }
 
         return project.task(type: Copy, "copySwift${taskQualifier}") {
             dependsOn(swiftBuildTask)
 
             from("src/main/swift/.build/jniLibs/${arch.androidAbi}") {
-                include "*.so"
+                include "*.so", "*.so.*"
             }
             from(toolchainHandle.getSwiftLibFolder(arch)) {
-                include "*.so"
+                include "*.so", "*.so.*"
             }
             from(outputLibraries)
 
