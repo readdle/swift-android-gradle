@@ -58,16 +58,18 @@ class ToolchainHandle {
         return getFolderInToolchain("usr/lib/swift-${arch.swiftArch}/android")
     }
 
-    Map<String, String> getSwiftEnv() {
+    Map<String, String> getSwiftEnv(int apiLevel) {
         return [
                 SWIFT_ANDROID_HOME: toolchainFolder?.absolutePath,
+                SWIFT_ANDROID_API_LEVEL: apiLevel.toString()
         ]
     }
 
-    Map<String, String> getFullEnv(Arch arch) {
+    Map<String, String> getFullEnv(Arch arch, int apiLevel) {
         return [
                 SWIFT_ANDROID_ARCH: arch.swiftArch,
                 SWIFT_ANDROID_HOME: toolchainFolder?.absolutePath,
+                SWIFT_ANDROID_API_LEVEL: apiLevel.toString(),
                 ANDROID_NDK_HOME: ndkFolder?.absolutePath
         ]
     }

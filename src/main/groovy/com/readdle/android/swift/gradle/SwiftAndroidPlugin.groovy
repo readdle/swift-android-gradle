@@ -191,12 +191,13 @@ class SwiftAndroidPlugin implements Plugin<Project> {
 
         def configurationArgs = ["--configuration", isDebug ? "debug" : "release"]
         def extraArgs = isDebug ? extension.debug.extraInstallFlags : extension.release.extraInstallFlags
+        def apiLevel = extension.apiLevel
 
         return project.task(type: Exec, "swiftInstall${variantName}") {
             workingDir "src/main/swift"
             executable toolchainHandle.swiftInstallPath
             args configurationArgs + extraArgs
-            environment toolchainHandle.swiftEnv
+            environment toolchainHandle.getSwiftEnv(apiLevel)
         }
     }
 
@@ -214,12 +215,13 @@ class SwiftAndroidPlugin implements Plugin<Project> {
         def configurationArgs = ["--configuration", isDebug ? "debug" : "release"]
         def extraArgs = isDebug ? extension.debug.extraBuildFlags : extension.release.extraBuildFlags
         def arguments = configurationArgs + extraArgs
+        def apiLevel = extension.apiLevel
 
         return project.task(type: Exec, "swiftBuild${taskQualifier}") {
             workingDir "src/main/swift"
             executable toolchainHandle.swiftBuildPath
             args arguments
-            environment toolchainHandle.getFullEnv(arch)
+            environment toolchainHandle.getFullEnv(arch, apiLevel)
 
             doFirst {
                 checkNdk()
@@ -232,6 +234,7 @@ class SwiftAndroidPlugin implements Plugin<Project> {
 
     private Task createCopyTask(Project project, BaseVariant variant, Arch arch, Task swiftBuildTask) {
         def taskQualifier = taskQualifier(variant, arch)
+        def extension = project.extensions.getByType(SwiftAndroidPluginExtension)
 
         def task = project.tasks.findByName("copySwift${taskQualifier}")
         if (task != null) {
@@ -240,8 +243,8 @@ class SwiftAndroidPlugin implements Plugin<Project> {
 
         boolean isDebug = variant.buildType.isJniDebuggable()
         String swiftPmBuildPath = isDebug
-                ? "src/main/swift/.build/${arch.swiftTriple}/debug"
-                : "src/main/swift/.build/${arch.swiftTriple}/release"
+                ? "src/main/swift/.build/${arch.swiftTriple}${extension.apiLevel}/debug"
+                : "src/main/swift/.build/${arch.swiftTriple}${extension.apiLevel}/release"
 
         def outputLibraries = project.fileTree(swiftPmBuildPath) {
             include "*.so", "*.so.*"
