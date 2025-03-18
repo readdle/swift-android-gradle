@@ -17,7 +17,6 @@ import java.nio.file.Path
 
 class SwiftAndroidPlugin implements Plugin<Project> {
     private ToolchainHandle toolchainHandle
-    private Task installToolsTask
 
     @Override
     void apply(Project project) {
@@ -28,14 +27,6 @@ class SwiftAndroidPlugin implements Plugin<Project> {
         configurePropertiesTask(project)
 
         project.afterEvaluate {
-            installToolsTask = createInstallSwiftToolsTask(project)
-
-            if (extension.swiftLintEnabled) {
-                installToolsTask.dependsOn(createSwiftLintTask(project))
-            }
-
-            createSwiftUpdateTask(project)
-
             Task swiftClean = createCleanTask(project, extension.usePackageClean)
             if (extension.cleanEnabled) {
                 Task cleanTask = project.tasks.getByName("clean")
@@ -67,9 +58,6 @@ class SwiftAndroidPlugin implements Plugin<Project> {
     private void handleVariant(Project project, BaseVariant variant) {
         boolean isDebug = variant.buildType.isJniDebuggable()
 
-        Task swiftInstall = createSwiftInstallTask(project, variant)
-        swiftInstall.dependsOn(installToolsTask)
-
         Task swiftLinkGenerated = createLinkGeneratedSourcesTask(project, variant)
 
         SwiftAndroidPluginExtension extension = project.extensions.getByType(SwiftAndroidPluginExtension)
@@ -93,7 +81,7 @@ class SwiftAndroidPlugin implements Plugin<Project> {
 
     private Task createSwiftTaskChain(Project project, BaseVariant variant, Arch arch, Task swiftLinkGenerated) {
         Task swiftBuild = createSwiftBuildTask(project, variant, arch)
-        swiftBuild.dependsOn(installToolsTask, swiftLinkGenerated)
+        swiftBuild.dependsOn(swiftLinkGenerated)
 
         return createCopyTask(project, variant, arch, swiftBuild)
     }
@@ -136,24 +124,6 @@ class SwiftAndroidPlugin implements Plugin<Project> {
     }
 
     // Tasks
-    private Task createInstallSwiftToolsTask(Project project) {
-        def version = toolchainHandle.TOOLS_VERSION
-
-        return project.task(type: Exec, "installSwiftTools") {
-            executable toolchainHandle.toolsManagerPath
-            args "tools", "--install", version
-
-            doFirst {
-                checkToolchain()
-                println "Installing Swift Build Tools v${version}"
-            }
-
-            doLast {
-                println "Swift Build Tools v${version} installed"
-            }
-        }
-    }
-
     private static Task createCleanTask(Project project, boolean usePackageClean) {
         Task forceClean = project.task(type: Delete, "swiftForceClean") {
             // I don't trust Swift Package Manager's --clean
@@ -167,37 +137,6 @@ class SwiftAndroidPlugin implements Plugin<Project> {
 
         return project.task("swiftClean") {
             dependsOn(usePackageClean ? packageClean : forceClean)
-        }
-    }
-
-    // TODO: integrate with android gradle pipeline
-    private static Task createSwiftUpdateTask(Project project) {
-        return project.task(type: Exec, "swiftPackageUpdate") {
-            workingDir "src/main/swift"
-            commandLine "swift", "package", "update"
-        }
-    }
-
-    private Task createSwiftInstallTask(Project project, BaseVariant variant) {
-        boolean isDebug = variant.buildType.isJniDebuggable()
-        def variantName = isDebug ? "Debug" : "Release"
-
-        def task = project.tasks.findByName("swiftInstall${variantName}")
-        if (task != null) {
-            return task
-        }
-
-        def extension = project.extensions.getByType(SwiftAndroidPluginExtension)
-
-        def configurationArgs = ["--configuration", isDebug ? "debug" : "release"]
-        def extraArgs = isDebug ? extension.debug.extraInstallFlags : extension.release.extraInstallFlags
-        def apiLevel = extension.apiLevel
-
-        return project.task(type: Exec, "swiftInstall${variantName}") {
-            workingDir "src/main/swift"
-            executable toolchainHandle.swiftInstallPath
-            args configurationArgs + extraArgs
-            environment toolchainHandle.getSwiftEnv(apiLevel)
         }
     }
 

@@ -5,10 +5,8 @@ import org.apache.commons.configuration.PropertiesConfigurationLayout
 import org.gradle.api.GradleException
 import org.gradle.api.Project
 
-
 class ToolchainHandle {
     public static final String FN_LOCAL_PROPERTIES = "local.properties"
-    public static final String TOOLS_VERSION = "1.9.8-swift5.7"
     public static final String SWIFT_ANDROID_HOME_KEY = "swift-android.dir"
     public static final String ANDROID_NDK_HOME_KEY = "ndk.dir"
 
@@ -27,7 +25,7 @@ class ToolchainHandle {
     }
 
     private String getTool(String name) {
-        return getPathInSwiftHome("build-tools/${TOOLS_VERSION}/${name}")
+        return getPathInSwiftHome("build-tools/${name}")
     }
 
     private String getFolderInToolchain(String path) {
@@ -42,16 +40,8 @@ class ToolchainHandle {
         return ndkFolder != null && ndkFolder.isDirectory()
     }
 
-    String getToolsManagerPath() {
-        return getPathInSwiftHome("bin/swift-android")
-    }
-
     String getSwiftBuildPath() {
-        return getTool("swift-build")
-    }
-
-    String getSwiftInstallPath() {
-        return getTool("swift-install")
+        return getTool("swift-android-build")
     }
 
     String getSwiftLibFolder(Arch arch) {
