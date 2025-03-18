@@ -5,16 +5,16 @@ This plugin integrates [Swift Android Toolchain](https://github.com/readdle/swif
 
 ## Pre-requirements
 
-This plugin require [Android NDK r21e](https://dl.google.com/android/repository/android-ndk-r21e-darwin-x86_64.zip) and [Swift Android Toolchain](https://github.com/readdle/swift-android-toolchain/releases/latest)
+This plugin requires **Android NDK** and the **Swift Android Toolchain**. Follow the [installation guide](https://github.com/readdle/swift-android-toolchain) to set them up.
 
-Plugin lookup NDK and toolchain by environment variables `ANDROID_NDK_HOME` and `SWIFT_ANDROID_HOME` or `local.properties` in project root
+The plugin looks up the NDK and toolchain using the environment variables `ANDROID_NDK_HOME` and `SWIFT_ANDROID_HOME`, or by reading `local.properties` in the project root:
 
     ndk.dir=/path/to/ndk
     swift-android.dir=/path/to/toolchain
 
 ## Setup
 
-Plugin build swift code using [SwiftPM](https://github.com/apple/swift-package-manager) so you should define you code inside SwiftPM modules. Root module should be located inside `app/src/main/swift`. See [sample](https://github.com/readdle/swift-android-architecture).
+Plugin build swift code using [SwiftPM](https://github.com/apple/swift-package-manager) so you should define you code inside SwiftPM modules. Root module should be located inside `app/src/main/swift`. See [sample](https://github.com/andriydruk/swift-weather-app/tree/master/android/app/src/main/swift).
 
 #### Adding plugin to gradle scripts
 1. Add the following to your root build.gradle
@@ -25,7 +25,7 @@ buildscript {
         mavenCentral()
     }
     dependencies {
-        classpath 'com.readdle.android.swift:gradle:1.4.0'
+        classpath 'com.readdle.android.swift:gradle:6.0.3'
     }
 }
 ```
@@ -62,10 +62,6 @@ buildTypes {
 
 ```gradle
 swift {
-    // helpers to forward flags from Swift Package Manager to Swift Compiler Frontend
-    def passToFrontend = ["-Xswiftc", "-Xfrontend", "-Xswiftc"]
-    def disableObjcAttr = passToFrontend + "-experimental-disable-objc-attr"
-    
     // Enables swift clean when ./gradlew clean invoked. Default true
     cleanEnabled false 
     
@@ -73,16 +69,12 @@ swift {
     debug {
         // Set custom preprocessor flags
         extraBuildFlags "-Xswiftc", "-DDEBUG"
-        // Disable @objc and dynamic
-        extraBuildFlags disableObjcAttr
     }
     
     // Custom swift flags for release build
     release {
         // enable symbols in relase mode
         extraBuildFlags "-Xswiftc", "-g"
-        // Disable @objc and dynamic
-        extraBuildFlags disableObjcAttr
     }
 }
 ```
@@ -90,7 +82,6 @@ swift {
 ## Usage
 
 In simple cases you can just run `./gradlew assembleDebug` and everything will work.
-If your use swift package manager dependencies with external build process you should firstly invoke `./gradlew swiftInstallDebug`
 
 #### Other SwiftPM to gradle mapping:
 
@@ -103,4 +94,4 @@ If your use swift package manager dependencies with external build process you s
 
 ## Sample
 
-See [sample android app](https://github.com/readdle/swift-android-architecture).
+See [sample app](https://github.com/andriydruk/swift-weather-app).
