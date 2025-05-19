@@ -45,7 +45,7 @@ class ToolchainHandle {
     }
 
     String getSwiftLibFolder(Arch arch) {
-        return getFolderInToolchain("usr/lib/swift-${arch.swiftArch}/android")
+        return getFolderInToolchain("usr/lib/swift/android/${arch.swiftArch}")
     }
 
     Map<String, String> getSwiftEnv(int apiLevel) {
