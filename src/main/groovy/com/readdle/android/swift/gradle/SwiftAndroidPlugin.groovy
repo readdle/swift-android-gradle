@@ -7,6 +7,7 @@ import org.gradle.api.GradleException
 import org.gradle.api.Plugin
 import org.gradle.api.Project
 import org.gradle.api.Task
+import org.gradle.api.file.RelativePath
 import org.gradle.api.tasks.Copy
 import org.gradle.api.tasks.Delete
 import org.gradle.api.tasks.Exec
@@ -182,8 +183,8 @@ class SwiftAndroidPlugin implements Plugin<Project> {
 
         boolean isDebug = variant.buildType.isJniDebuggable()
         String swiftPmBuildPath = isDebug
-                ? "src/main/swift/.build/${arch.swiftTriple}${extension.apiLevel}/debug"
-                : "src/main/swift/.build/${arch.swiftTriple}${extension.apiLevel}/release"
+                ? "src/main/swift/.build/${arch.swiftTarget}${extension.apiLevel}/debug"
+                : "src/main/swift/.build/${arch.swiftTarget}${extension.apiLevel}/release"
 
         def outputLibraries = project.fileTree(swiftPmBuildPath) {
             include "*.so", "*.so.*"
@@ -192,8 +193,12 @@ class SwiftAndroidPlugin implements Plugin<Project> {
         return project.task(type: Copy, "copySwift${taskQualifier}") {
             dependsOn(swiftBuildTask)
 
-            from("src/main/swift/.build/jniLibs/${arch.androidAbi}") {
-                include "*.so", "*.so.*"
+            from("src/main/swift/.build/artifacts") {
+                include "**/${arch.swiftTriple}/*.so", "**${arch.swiftTriple}/*.so.*"
+                includeEmptyDirs = false
+                eachFile { d ->
+                    d.relativePath = new RelativePath(true, d.name)
+                }
             }
             from(toolchainHandle.getSwiftLibFolder(arch)) {
                 include "*.so", "*.so.*"
