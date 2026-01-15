@@ -3,7 +3,6 @@ package com.readdle.android.swift.gradle
 import com.android.build.gradle.api.ApplicationVariant
 import com.android.build.gradle.api.BaseVariant
 import com.android.build.gradle.api.LibraryVariant
-import org.gradle.api.GradleException
 import org.gradle.api.Plugin
 import org.gradle.api.Project
 import org.gradle.api.Task
@@ -17,15 +16,10 @@ import java.nio.file.Files
 import java.nio.file.Path
 
 class SwiftAndroidPlugin implements Plugin<Project> {
-    private ToolchainHandle toolchainHandle
 
     @Override
     void apply(Project project) {
-        toolchainHandle = new ToolchainHandle(project)
-
         def extension = project.extensions.create('swift', SwiftAndroidPluginExtension, project)
-
-        configurePropertiesTask(project)
 
         project.afterEvaluate {
             Task swiftClean = createCleanTask(project, extension.usePackageClean)
@@ -44,14 +38,6 @@ class SwiftAndroidPlugin implements Plugin<Project> {
                 project.android.libraryVariants.all { LibraryVariant variant ->
                     handleVariant(project, variant)
                 }
-            }
-        }
-    }
-
-    private void configurePropertiesTask(Project project) {
-        project.task("swiftUpdateLocalProperties") {
-            doLast {
-                toolchainHandle.updateProperties(project)
             }
         }
     }
@@ -106,24 +92,6 @@ class SwiftAndroidPlugin implements Plugin<Project> {
         }
     }
 
-    private void checkToolchain() {
-        if (!toolchainHandle.isToolchainPresent()) {
-            throw new GradleException(
-                    "Swift Toolchain location not found. Define location with swift-android.dir in the " +
-                            "local.properties file or with an SWIFT_ANDROID_HOME environment variable."
-            )
-        }
-    }
-
-    private void checkNdk() {
-        if (!toolchainHandle.isNdkPresent()) {
-            throw new GradleException(
-                    "NDK location not found. Define location with ndk.dir in the " +
-                            "local.properties file or with an ANDROID_NDK_HOME environment variable."
-            )
-        }
-    }
-
     // Tasks
     private static Task createCleanTask(Project project, boolean usePackageClean) {
         Task forceClean = project.task(type: Delete, "swiftForceClean") {
@@ -141,7 +109,7 @@ class SwiftAndroidPlugin implements Plugin<Project> {
         }
     }
 
-    private Task createSwiftBuildTask(Project project, BaseVariant variant, Arch arch) {
+    private static Task createSwiftBuildTask(Project project, BaseVariant variant, Arch arch) {
         boolean isDebug = variant.buildType.isJniDebuggable()
         def taskQualifier = taskQualifier(variant, arch)
 
@@ -152,27 +120,30 @@ class SwiftAndroidPlugin implements Plugin<Project> {
 
         def extension = project.extensions.getByType(SwiftAndroidPluginExtension)
 
+        // Build the swift-sdk target: e.g., "aarch64-unknown-linux-android31"
+        def swiftSdk = "${arch.swiftTarget}${extension.apiLevel}"
+
         def configurationArgs = ["--configuration", isDebug ? "debug" : "release"]
         def extraArgs = isDebug ? extension.debug.extraBuildFlags : extension.release.extraBuildFlags
-        def arguments = configurationArgs + extraArgs
-        def apiLevel = extension.apiLevel
+
+        // Build tools flags for preprocessor definitions
+        def buildToolsFlags = ["-Xbuild-tools-swiftc", "-DTARGET_ANDROID", "-Xbuild-tools-swiftc", "-D${arch.tripleFlag}"]
+
+        // swiftly run +6.2 swift build --swift-sdk <target> <config> <flags> <extra>
+        def arguments = ["run", "+${extension.swiftlyVersion}", "swift", "build", "--swift-sdk", swiftSdk] + configurationArgs + buildToolsFlags + extraArgs
 
         return project.task(type: Exec, "swiftBuild${taskQualifier}") {
             workingDir "src/main/swift"
-            executable toolchainHandle.swiftBuildPath
+            executable extension.swiftlyPath
             args arguments
-            environment toolchainHandle.getFullEnv(arch, apiLevel)
 
             doFirst {
-                checkNdk()
-
-                def args = arguments.join(" ")
-                println("Swift PM flags: ${args}")
+                println("Swiftly build: swiftly ${arguments.join(' ')}")
             }
         }
     }
 
-    private Task createCopyTask(Project project, BaseVariant variant, Arch arch, Task swiftBuildTask) {
+    private static Task createCopyTask(Project project, BaseVariant variant, Arch arch, Task swiftBuildTask) {
         def taskQualifier = taskQualifier(variant, arch)
         def extension = project.extensions.getByType(SwiftAndroidPluginExtension)
 
@@ -190,6 +161,11 @@ class SwiftAndroidPlugin implements Plugin<Project> {
             include "*.so", "*.so.*"
         }
 
+        // Swift libs from SDK: ${sdkPath}/swift-android/swift-resources/usr/lib/swift-${arch}/android
+        def swiftLibFolder = "${extension.swiftSdkPath}/swift-android/swift-resources/usr/lib/swift-${arch.swiftArch}/android"
+        // NDK sysroot libs: ${sdkPath}/swift-android/swift-resources/usr/lib/${triple}/
+        def ndkSysrootLibFolder = "${extension.swiftSdkPath}/swift-android/ndk-sysroot/usr/lib/${arch.ndkTriple}"
+
         return project.task(type: Copy, "copySwift${taskQualifier}") {
             dependsOn(swiftBuildTask)
 
@@ -200,8 +176,11 @@ class SwiftAndroidPlugin implements Plugin<Project> {
                     d.relativePath = new RelativePath(true, d.name)
                 }
             }
-            from(toolchainHandle.getSwiftLibFolder(arch)) {
+            from(swiftLibFolder) {
                 include "*.so", "*.so.*"
+            }
+            from(ndkSysrootLibFolder) {
+                include "libc++_shared.so"
             }
             from(outputLibraries)
 
@@ -238,24 +217,6 @@ class SwiftAndroidPlugin implements Plugin<Project> {
                         link,
                         link.getParent().relativize(target)
                 )
-            }
-        }
-    }
-
-    private static Task createSwiftLintTask(Project project) {
-        return project.task(type: Exec, "swiftLint") {
-            workingDir "src/main/swift"
-            commandLine "swiftlint", "--strict", "--reporter", "xcode"
-
-            ignoreExitValue = true
-            errorOutput = new ByteArrayOutputStream()
-            standardOutput = new ByteArrayOutputStream()
-
-            doLast {
-                def output = standardOutput.toString()
-                if (!output.empty) {
-                    throw new GradleException(output)
-                }
             }
         }
     }

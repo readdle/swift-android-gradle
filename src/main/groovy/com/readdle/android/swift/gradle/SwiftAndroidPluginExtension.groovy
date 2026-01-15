@@ -111,9 +111,13 @@ class SwiftAndroidPluginExtension {
 
     boolean cleanEnabled = true
     boolean usePackageClean = true
-    boolean swiftLintEnabled = false
     boolean useKapt = false
-    int apiLevel = 24
+    int apiLevel = 29
+
+    // Swiftly configuration
+    String swiftlyPath = "${System.getProperty('user.home')}/.swiftly/bin/swiftly"
+    String swiftlyVersion = "6.2"
+    String swiftSdkPath = "${System.getProperty('user.home')}/Library/org.swift.swiftpm/swift-sdks/readdle-swift-6.2.1-RELEASE_android.artifactbundle"
 
     SwiftAndroidPluginExtension(Project project) {
         this.project = project
