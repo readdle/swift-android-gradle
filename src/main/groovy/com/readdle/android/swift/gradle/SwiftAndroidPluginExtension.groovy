@@ -1,5 +1,6 @@
 package com.readdle.android.swift.gradle
 
+import groovy.json.JsonSlurper
 import org.gradle.api.Project
 import org.gradle.util.GUtil
 
@@ -116,11 +117,30 @@ class SwiftAndroidPluginExtension {
 
     // Swiftly configuration
     String swiftlyPath = "${System.getProperty('user.home')}/.swiftly/bin/swiftly"
-    String swiftlyVersion = "6.2"
     String swiftSdkPath = "${System.getProperty('user.home')}/Library/org.swift.swiftpm/swift-sdks/readdle-swift-6.2.1-RELEASE_android.artifactbundle"
 
     SwiftAndroidPluginExtension(Project project) {
         this.project = project
+    }
+
+    String getSwiftlyVersion() {
+        def sbomFile = new File(swiftSdkPath, "sbom.spdx.json")
+        if (!sbomFile.exists()) {
+            throw new RuntimeException("sbom.spdx.json not found in SDK: ${swiftSdkPath}")
+        }
+
+        def json = new JsonSlurper().parse(sbomFile)
+        def swiftPackage = json.packages?.find { it.name == "swift" }
+        if (swiftPackage == null || !swiftPackage.versionInfo) {
+            throw new RuntimeException("Could not find Swift version in: ${sbomFile}")
+        }
+
+        def version = swiftPackage.versionInfo.split("-")[0]
+        def parts = version.split("\\.")
+        if (parts.length >= 3) {
+            return "${parts[0]}.${parts[1]}.${parts[2]}"
+        }
+        return "${parts[0]}.${parts[1]}"
     }
 
     SwiftFlags debug(Closure closure) {

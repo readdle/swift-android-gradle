@@ -7,10 +7,10 @@ This plugin integrates Swift for Android builds using [swiftly](https://github.c
 
 This plugin requires **swiftly** and a **Swift Android SDK** installed.
 
-1. Install swiftly and Swift 6.2+:
+1. Install swiftly and Swift:
 ```bash
 curl -L https://swiftlang.github.io/swiftly/swiftly-install.sh | bash
-swiftly install 6.2
+swiftly install <swift-versoin-from-sdk>
 ```
 
 2. Install the Swift Android SDK:
@@ -31,7 +31,7 @@ buildscript {
         mavenCentral()
     }
     dependencies {
-        classpath 'com.readdle.android.swift:gradle:6.2'
+        classpath 'com.readdle.android.swift:gradle:6.2.1'
     }
 }
 ```
@@ -76,9 +76,6 @@ swift {
     
     // Path to swiftly executable. Default: ~/.swiftly/bin/swiftly
     swiftlyPath "/custom/path/to/swiftly"
-    
-    // Swift version to use with swiftly. Default: "6.2"
-    swiftlyVersion "6.2"
     
     // Path to Swift Android SDK. Default: ~/Library/org.swift.swiftpm/swift-sdks/readdle-swift-6.2.1-RELEASE_android.artifactbundle
     swiftSdkPath "/custom/path/to/sdk.artifactbundle"
