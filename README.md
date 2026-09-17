@@ -31,7 +31,7 @@ buildscript {
         mavenCentral()
     }
     dependencies {
-        classpath 'com.readdle.android.swift:gradle:6.2.1'
+        classpath 'com.readdle.android.swift:gradle:6.2.2'
     }
 }
 ```
