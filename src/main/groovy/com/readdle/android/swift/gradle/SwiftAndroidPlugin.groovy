@@ -1,8 +1,5 @@
 package com.readdle.android.swift.gradle
 
-import com.android.build.gradle.api.ApplicationVariant
-import com.android.build.gradle.api.BaseVariant
-import com.android.build.gradle.api.LibraryVariant
 import org.gradle.api.Plugin
 import org.gradle.api.Project
 import org.gradle.api.Task
@@ -17,9 +14,41 @@ import java.nio.file.Path
 
 class SwiftAndroidPlugin implements Plugin<Project> {
 
+    /**
+     * The parts of a variant this plugin actually needs. AGP 9 removed the
+     * {@code applicationVariants} / {@code libraryVariants} DSL collections that used to hand us a
+     * {@code BaseVariant}; the replacement {@code Variant} exposes the build type only as a name,
+     * so the build-type DSL object is looked up separately.
+     */
+    private static class VariantInfo {
+        final String name
+        final String buildTypeName
+
+        VariantInfo(String name, String buildTypeName) {
+            this.name = name
+            this.buildTypeName = buildTypeName
+        }
+    }
+
     @Override
     void apply(Project project) {
         def extension = project.extensions.create('swift', SwiftAndroidPluginExtension, project)
+
+        // `onVariants` fires while AGP is still building its own task graph, so it only records
+        // what exists. The task wiring stays in `afterEvaluate`, which Gradle runs after AGP's own
+        // callback and therefore after the tasks we attach to have been created.
+        List<VariantInfo> variants = new ArrayList<>()
+        def androidComponents = project.extensions.findByName("androidComponents")
+        if (androidComponents == null) {
+            throw new IllegalStateException(
+                    "The 'androidComponents' extension is missing. Apply an Android plugin " +
+                            "(com.android.application or com.android.library) before " +
+                            "com.readdle.android.swift."
+            )
+        }
+        androidComponents.onVariants(androidComponents.selector().all(), { variant ->
+            variants.add(new VariantInfo(variant.name as String, variant.buildType as String))
+        })
 
         project.afterEvaluate {
             Task swiftClean = createCleanTask(project, extension.usePackageClean)
@@ -28,29 +57,20 @@ class SwiftAndroidPlugin implements Plugin<Project> {
                 cleanTask.dependsOn(swiftClean)
             }
 
-            if(project.android.hasProperty('applicationVariants')) {
-                project.android.applicationVariants.all { ApplicationVariant variant ->
-                    handleVariant(project, variant)
-                }
-            }
-
-            if(project.android.hasProperty('libraryVariants')) {
-                project.android.libraryVariants.all { LibraryVariant variant ->
-                    handleVariant(project, variant)
-                }
-            }
+            variants.each { VariantInfo variant -> handleVariant(project, variant) }
         }
     }
 
-    private void handleVariant(Project project, BaseVariant variant) {
-        boolean isDebug = variant.buildType.isJniDebuggable()
+    private void handleVariant(Project project, VariantInfo variant) {
+        def buildType = project.android.buildTypes.getByName(variant.buildTypeName)
+        boolean isDebug = buildType.isJniDebuggable()
 
         Task swiftLinkGenerated = createLinkGeneratedSourcesTask(project, variant)
 
         SwiftAndroidPluginExtension extension = project.extensions.getByType(SwiftAndroidPluginExtension)
         Set<String> abiFilters = isDebug ? extension.debug.abiFilters : extension.release.abiFilters
         if (abiFilters == null || abiFilters.isEmpty()) {
-            abiFilters = variant.buildType.ndk.abiFilters ?: new HashSet<String>()
+            abiFilters = buildType.ndk.abiFilters ?: new HashSet<String>()
         }
 
         Set<Arch> allowedArchitectures = Arch.values()
@@ -58,7 +78,7 @@ class SwiftAndroidPlugin implements Plugin<Project> {
                 .toSet()
 
         for (Arch arch : Arch.values()) {
-            Task swiftChain = createSwiftTaskChain(project, variant, arch, swiftLinkGenerated)
+            Task swiftChain = createSwiftTaskChain(project, variant, arch, swiftLinkGenerated, isDebug)
 
             if (allowedArchitectures.contains(arch)) {
                 mountSwiftToAndroidPipeline(project, variant, swiftChain)
@@ -66,14 +86,20 @@ class SwiftAndroidPlugin implements Plugin<Project> {
         }
     }
 
-    private Task createSwiftTaskChain(Project project, BaseVariant variant, Arch arch, Task swiftLinkGenerated) {
-        Task swiftBuild = createSwiftBuildTask(project, variant, arch)
+    private Task createSwiftTaskChain(
+            Project project,
+            VariantInfo variant,
+            Arch arch,
+            Task swiftLinkGenerated,
+            boolean isDebug
+    ) {
+        Task swiftBuild = createSwiftBuildTask(project, variant, arch, isDebug)
         swiftBuild.dependsOn(swiftLinkGenerated)
 
-        return createCopyTask(project, variant, arch, swiftBuild)
+        return createCopyTask(project, variant, arch, swiftBuild, isDebug)
     }
 
-    private static void mountSwiftToAndroidPipeline(Project project, BaseVariant variant, Task copySwift) {
+    private static void mountSwiftToAndroidPipeline(Project project, VariantInfo variant, Task copySwift) {
         def variantName = variant.name.capitalize()
 
         Task compileNdk = project.tasks.findByName("compile${variantName}Ndk")
@@ -87,8 +113,16 @@ class SwiftAndroidPlugin implements Plugin<Project> {
             externalNativeBuild.dependsOn(copySwift)
         } else if (mergeLibs != null) {
             mergeLibs.dependsOn(copySwift)
-        } else {
+        } else if (compileSources != null) {
             compileSources.dependsOn(copySwift)
+        } else {
+            // Skipping silently produces an APK with no Swift libraries, which only surfaces as an
+            // UnsatisfiedLinkError at runtime, and only on a machine without stale jniLibs.
+            throw new IllegalStateException(
+                    "Could not attach ${copySwift.name} to variant '${variant.name}': none of " +
+                            "compile${variantName}Ndk, externalNativeBuild${variantName}, " +
+                            "merge${variantName}JniLibFolders or compile${variantName}Sources exist."
+            )
         }
     }
 
@@ -109,8 +143,7 @@ class SwiftAndroidPlugin implements Plugin<Project> {
         }
     }
 
-    private static Task createSwiftBuildTask(Project project, BaseVariant variant, Arch arch) {
-        boolean isDebug = variant.buildType.isJniDebuggable()
+    private static Task createSwiftBuildTask(Project project, VariantInfo variant, Arch arch, boolean isDebug) {
         def taskQualifier = taskQualifier(variant, arch)
 
         def task = project.tasks.findByName("swiftBuild${taskQualifier}")
@@ -143,7 +176,13 @@ class SwiftAndroidPlugin implements Plugin<Project> {
         }
     }
 
-    private static Task createCopyTask(Project project, BaseVariant variant, Arch arch, Task swiftBuildTask) {
+    private static Task createCopyTask(
+            Project project,
+            VariantInfo variant,
+            Arch arch,
+            Task swiftBuildTask,
+            boolean isDebug
+    ) {
         def taskQualifier = taskQualifier(variant, arch)
         def extension = project.extensions.getByType(SwiftAndroidPluginExtension)
 
@@ -152,7 +191,6 @@ class SwiftAndroidPlugin implements Plugin<Project> {
             return task
         }
 
-        boolean isDebug = variant.buildType.isJniDebuggable()
         String swiftPmBuildPath = isDebug
                 ? "src/main/swift/.build/${arch.swiftTarget}${extension.apiLevel}/debug"
                 : "src/main/swift/.build/${arch.swiftTarget}${extension.apiLevel}/release"
@@ -186,19 +224,27 @@ class SwiftAndroidPlugin implements Plugin<Project> {
 
             into "src/main/jniLibs/${arch.androidAbi}"
 
-            fileMode = 0644
+            // Gradle 9 removed Copy.fileMode in favour of the filePermissions block.
+            filePermissions {
+                unix(0644)
+            }
             duplicatesStrategy = DuplicatesStrategy.INCLUDE
         }
     }
 
-    private static String taskQualifier(BaseVariant variant, Arch arch) {
+    private static String taskQualifier(VariantInfo variant, Arch arch) {
         String archComponent = arch.variantName.capitalize()
-        String buildTypeComponent = variant.buildType.name.capitalize()
+        String buildTypeComponent = variant.buildTypeName.capitalize()
         return archComponent + buildTypeComponent
     }
 
-    private static Task createLinkGeneratedSourcesTask(Project project, BaseVariant variant) {
+    private static Task createLinkGeneratedSourcesTask(Project project, VariantInfo variant) {
         def variantName = variant.name.capitalize()
+
+        def existing = project.tasks.findByName("swiftLinkGeneratedSources${variantName}")
+        if (existing != null) {
+            return existing
+        }
 
         def target = generatedSourcesPath(project, variant)
 
@@ -221,13 +267,14 @@ class SwiftAndroidPlugin implements Plugin<Project> {
         }
     }
 
-    private static Path generatedSourcesPath(Project project, BaseVariant variant) {
+    private static Path generatedSourcesPath(Project project, VariantInfo variant) {
         def extension = project.extensions.getByType(SwiftAndroidPluginExtension)
+        def buildDir = project.layout.buildDirectory.get().asFile
 
         if (extension.useKapt) {
-            return new File(project.buildDir, "generated/source/kapt/${variant.name}/SwiftGenerated").toPath()
+            return new File(buildDir, "generated/source/kapt/${variant.name}/SwiftGenerated").toPath()
         } else {
-            return new File(project.buildDir, "generated/ap_generated_sources/${variant.name}/out/SwiftGenerated").toPath()
+            return new File(buildDir, "generated/ap_generated_sources/${variant.name}/out/SwiftGenerated").toPath()
         }
     }
 
