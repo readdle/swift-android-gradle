@@ -153,8 +153,16 @@ class SwiftAndroidPlugin implements Plugin<Project> {
 
         def extension = project.extensions.getByType(SwiftAndroidPluginExtension)
 
-        // Build the swift-sdk target: e.g., "aarch64-unknown-linux-android31"
-        def swiftSdk = "${arch.swiftTarget}${extension.apiLevel}"
+        // Use exactly the SDK at swiftSdkPath: look for SDKs only in its folder,
+        // select it by ID and the target by triple, e.g.
+        // "readdle-swift-6.4.1-RELEASE_android" + "aarch64-unknown-linux-android31".
+        // A bare triple is ambiguous when several installed SDKs support it, and
+        // older SwiftPM versions then silently pick the wrong one.
+        def sdkArgs = [
+                "--swift-sdks-path", new File(extension.swiftSdkPath).parent,
+                "--swift-sdk", extension.swiftSdkId,
+                "--triple", "${arch.swiftTarget}${extension.apiLevel}"
+        ]
 
         def configurationArgs = ["--configuration", isDebug ? "debug" : "release"]
         def extraArgs = isDebug ? extension.debug.extraBuildFlags : extension.release.extraBuildFlags
@@ -162,8 +170,8 @@ class SwiftAndroidPlugin implements Plugin<Project> {
         // Build tools flags for preprocessor definitions
         def buildToolsFlags = ["-Xbuild-tools-swiftc", "-DTARGET_ANDROID", "-Xbuild-tools-swiftc", "-D${arch.tripleFlag}"]
 
-        // swiftly run +6.2 swift build --swift-sdk <target> <config> <flags> <extra>
-        def arguments = ["run", "+${extension.swiftlyVersion}", "swift", "build", "--swift-sdk", swiftSdk] + configurationArgs + buildToolsFlags + extraArgs
+        // swiftly run +6.4.1 swift build --swift-sdk <sdk id> --triple <target> <config> <flags> <extra>
+        def arguments = ["run", "+${extension.swiftlyVersion}", "swift", "build"] + sdkArgs + configurationArgs + buildToolsFlags + extraArgs
 
         return project.task(type: Exec, "swiftBuild${taskQualifier}") {
             workingDir "src/main/swift"

@@ -117,7 +117,12 @@ class SwiftAndroidPluginExtension {
 
     // Swiftly configuration
     String swiftlyPath = "${System.getProperty('user.home')}/.swiftly/bin/swiftly"
-    String swiftSdkPath = "${System.getProperty('user.home')}/Library/org.swift.swiftpm/swift-sdks/readdle-swift-6.2.1-RELEASE_android.artifactbundle"
+    // Swift SDK bundle to build with. Set it in the swift { } block, or with the
+    // SWIFT_ANDROID_SDK_HOME environment variable (same one swift-android-buildtools
+    // uses), e.g. to keep this SDK outside SwiftPM's default swift-sdks folder so
+    // branches on older plugins keep using their own SDK from there.
+    String swiftSdkPath = System.getenv("SWIFT_ANDROID_SDK_HOME") ?:
+            "${System.getProperty('user.home')}/Library/org.swift.swiftpm/swift-sdks/readdle-swift-6.4.1-RELEASE_android.artifactbundle"
 
     SwiftAndroidPluginExtension(Project project) {
         this.project = project
@@ -141,6 +146,23 @@ class SwiftAndroidPluginExtension {
             return "${parts[0]}.${parts[1]}.${parts[2]}"
         }
         return "${parts[0]}.${parts[1]}"
+    }
+
+    // The artifact ID of the SDK bundle at swiftSdkPath, as listed by `swift sdk list`.
+    // Passing it with --triple selects this exact SDK even when other installed
+    // SDKs (e.g. an older Readdle SDK) support the same target triple.
+    String getSwiftSdkId() {
+        def infoFile = new File(swiftSdkPath, "info.json")
+        if (!infoFile.exists()) {
+            throw new RuntimeException("info.json not found in SDK: ${swiftSdkPath}")
+        }
+
+        def json = new JsonSlurper().parse(infoFile)
+        def sdkId = json.artifacts?.find { it.value?.type == "swiftSDK" }?.key
+        if (!sdkId) {
+            throw new RuntimeException("Could not find a swiftSDK artifact in: ${infoFile}")
+        }
+        return sdkId
     }
 
     SwiftFlags debug(Closure closure) {

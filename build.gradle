@@ -39,7 +39,7 @@ ext {
     // Provide your own coordinates here
     PUBLISH_GROUP_ID = 'com.readdle.android.swift'
     PUBLISH_ARTIFACT_ID = 'gradle'
-    PUBLISH_VERSION = '6.2.2'
+    PUBLISH_VERSION = '6.4.0'
 }
 
 apply from: "${rootProject.projectDir}/publish-module.gradle"

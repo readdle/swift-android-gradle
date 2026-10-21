@@ -31,7 +31,7 @@ buildscript {
         mavenCentral()
     }
     dependencies {
-        classpath 'com.readdle.android.swift:gradle:6.2.2'
+        classpath 'com.readdle.android.swift:gradle:6.4.0'
     }
 }
 ```
@@ -77,7 +77,10 @@ swift {
     // Path to swiftly executable. Default: ~/.swiftly/bin/swiftly
     swiftlyPath "/custom/path/to/swiftly"
     
-    // Path to Swift Android SDK. Default: ~/Library/org.swift.swiftpm/swift-sdks/readdle-swift-6.2.1-RELEASE_android.artifactbundle
+    // Path to Swift Android SDK. Default: $SWIFT_ANDROID_SDK_HOME if set, otherwise
+    // ~/Library/org.swift.swiftpm/swift-sdks/readdle-swift-6.4.1-RELEASE_android.artifactbundle.
+    // The plugin builds with exactly this SDK (--swift-sdks-path, SDK ID and --triple),
+    // so SDKs of several Swift versions can be installed side by side.
     swiftSdkPath "/custom/path/to/sdk.artifactbundle"
     
     // Custom swift flags for debug build
